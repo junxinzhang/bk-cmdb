@@ -17,3 +17,7 @@ src/web*/cmdb_*
 
 
 pre-*-bkcodeai
+
+vendor/*
+vendor_libs/*
+scripts/*
