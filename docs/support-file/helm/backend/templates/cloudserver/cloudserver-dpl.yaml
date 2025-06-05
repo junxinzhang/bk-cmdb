@@ -26,8 +26,7 @@ spec:
         {{ toYaml .Values.cloudserver.podAnnotations | indent 8 }}
       {{- end }}
     spec:
-      imagePullSecrets:
-        - name: {{ .Values.image.pullSecretName }}
+      {{- include "cmdb.imagePullSecrets" . | nindent 6 }}
       containers:
       - name: cloudserver
         image: {{ .Values.image.registry }}/{{ .Values.cloudserver.image.repository }}:v{{ default .Chart.AppVersion .Values.cloudserver.image.tag }}
@@ -49,6 +48,7 @@ spec:
         - --logtostderr={{ .Values.cloudserver.command.logToStdErr }}
         - "--enable-auth"
         - {{ .Values.iam.auth.enabled | quote }}
+        {{- include "cmdb.configAndServiceCenter.certCommand" . | nindent 8 }}
         livenessProbe:
           httpGet:
             path: /healthz
@@ -89,12 +89,16 @@ spec:
           - name: configures
             mountPath: {{ .Values.cloudserver.configDir }}
           {{- end }}
+          {{- include "cmdb.mongodb.certVolumeMount" . | nindent 10 }}
+          {{- include "cmdb.configAndServiceCenter.certVolumeMount" . | nindent 10 }}
       volumes:
         {{- if .Values.cloudserver.configDir }}
         - name: configures
           configMap:
             name: {{ .Release.Name }}-cloudserver-configures
         {{- end }}
+        {{- include "cmdb.mongodb.certVolume" . | nindent 6 }}
+        {{- include "cmdb.configAndServiceCenter.certVolume" . | nindent 6 }}
 
       {{- with .Values.cloudserver.nodeSelector }}
       nodeSelector:

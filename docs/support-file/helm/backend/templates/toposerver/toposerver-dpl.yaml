@@ -26,8 +26,7 @@ spec:
         {{ toYaml .Values.toposerver.podAnnotations | indent 8 }}
       {{- end }}
     spec:
-      imagePullSecrets:
-        - name: {{ .Values.image.pullSecretName }}
+      {{- include "cmdb.imagePullSecrets" . | nindent 6 }}
       containers:
       - name: toposerver
         image: {{ .Values.image.registry }}/{{ .Values.toposerver.image.repository }}:v{{ default .Chart.AppVersion .Values.toposerver.image.tag }}
@@ -48,6 +47,7 @@ spec:
         - --logtostderr={{ .Values.toposerver.command.logToStdErr }}
         - "--enable-auth"
         - {{ .Values.iam.auth.enabled | quote }}
+        {{- include "cmdb.configAndServiceCenter.certCommand" . | nindent 8 }}
         livenessProbe:
           httpGet:
             path: /healthz
@@ -89,6 +89,8 @@ spec:
             mountPath: {{ .Values.toposerver.configDir }}
           {{- end }}
           {{- include "cmdb.redis.certVolumeMount" . | nindent 10 }}
+          {{- include "cmdb.configAndServiceCenter.certVolumeMount" . | nindent 10 }}
+          {{- include "cmdb.es.certVolumeMount" . | nindent 10 }}
       volumes:
         {{- if .Values.toposerver.configDir }}
         - name: configures
@@ -96,6 +98,8 @@ spec:
             name: {{ .Release.Name }}-toposerver-configures
         {{- end }}
         {{- include "cmdb.redis.certVolume" . | nindent 6 }}
+        {{- include "cmdb.configAndServiceCenter.certVolume" . | nindent 6 }}
+        {{- include "cmdb.es.certVolume" . | nindent 6 }}
 
       {{- with .Values.toposerver.nodeSelector }}
       nodeSelector:

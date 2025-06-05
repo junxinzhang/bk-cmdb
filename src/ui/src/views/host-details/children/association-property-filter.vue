@@ -43,7 +43,6 @@
   import { mapGetters, mapActions } from 'vuex'
   import has from 'has'
   import { QUERY_OPERATOR } from '@/utils/query-builder-operator'
-  import { escapeRegexChar } from '@/utils/util'
 
   export default {
     props: {
@@ -134,7 +133,7 @@
         this.localSelected.value = ''
       },
       'localSelected.value'(value) {
-        this.$emit('on-value-change', escapeRegexChar(value))
+        this.$emit('on-value-change', value)
       },
       async objId(objId) {
         try {

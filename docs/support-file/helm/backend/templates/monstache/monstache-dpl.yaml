@@ -26,8 +26,7 @@ spec:
         {{ toYaml .Values.monstache.podAnnotations | indent 8 }}
       {{- end }}
     spec:
-      imagePullSecrets:
-        - name: {{ .Values.image.pullSecretName }}
+      {{- include "cmdb.imagePullSecrets" . | nindent 6 }}
       containers:
       - name: monstache
         image: {{ .Values.image.registry }}/{{ .Values.monstache.image.repository }}:{{ .Values.monstache.image.tag }}
@@ -41,7 +40,8 @@ spec:
         volumeMounts:
           - name: configures
             mountPath: {{ .Values.monstache.configDir }}
-
+          {{- include "cmdb.mongodb.certVolumeMount" . | nindent 10 }}
+          {{- include "cmdb.es.certVolumeMount" . | nindent 10 }}
         {{- if .Values.monstache.resources }}
         resources: {{ toYaml .Values.monstache.resources | nindent 10 }}
         {{- end }}
@@ -53,5 +53,7 @@ spec:
         - name: configures
           configMap:
             name: {{ .Release.Name }}-monstache-configures
+        {{- include "cmdb.mongodb.certVolume" . | nindent 8 }}
+        {{- include "cmdb.es.certVolume" . | nindent 8 }}
 
 {{- end }}
