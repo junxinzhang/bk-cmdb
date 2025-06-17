@@ -21,3 +21,5 @@ pre-*-bkcodeai
 vendor/*
 vendor_libs/*
 scripts/*
+data/*
+.idea/workspace.xml

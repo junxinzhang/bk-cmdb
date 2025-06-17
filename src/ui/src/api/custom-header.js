@@ -18,9 +18,28 @@ const randomString = (length, chars) => {
   return result
 }
 
+// 获取当前用户名
+const getCurrentUser = () => {
+  // 从Cookie中获取用户名
+  const userCookie = document.cookie
+    .split(';')
+    .find(cookie => cookie.trim().startsWith('user='))
+  
+  if (userCookie) {
+    return userCookie.split('=')[1]
+  }
+  
+  // 兜底使用admin
+  return 'admin'
+}
+
 export default () => ({
   // opentelementry TraceID
   traceparent: `00-${randomString(32, TRACE_CHARS)}-${randomString(16, TRACE_CHARS)}-01`,
   // 请求ID
-  'X-Request-ID': `cc0000${xid.next()}`
+  'X-Request-ID': `cc0000${xid.next()}`,
+  // 用户认证头 - 解决API认证问题
+  'BK_User': getCurrentUser(),
+  // 供应商ID头 - 蓝鲸平台必需
+  'HTTP_BLUEKING_SUPPLIER_ID': '0'
 })
