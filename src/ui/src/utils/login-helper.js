@@ -36,6 +36,13 @@ export const gotoLoginPage = (url, isLogout = false) => {
     return
   }
   try {
+    // 如果是OIDC退出URL，直接跳转，不添加额外参数
+    if (isLogout && rawUrl.includes('/oidc/session/end')) {
+      console.log('OIDC logout detected, redirecting to:', rawUrl)
+      location.href = rawUrl
+      return
+    }
+
     const loginURL = new URL(rawUrl)
     loginURL.searchParams.set('c_url', location.href)
 

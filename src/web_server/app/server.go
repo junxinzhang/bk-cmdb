@@ -232,6 +232,7 @@ func (w *WebServer) onServerConfigUpdate(previous, current cc.ProcessConfig) {
 	w.Config.OIDC.AuthUrl, _ = cc.String("webServer.oidc.authUrl")
 	w.Config.OIDC.TokenUrl, _ = cc.String("webServer.oidc.tokenUrl")
 	w.Config.OIDC.UserInfoUrl, _ = cc.String("webServer.oidc.userInfoUrl")
+	w.Config.OIDC.LogoutUrl, _ = cc.String("webServer.oidc.logoutUrl")
 	w.Config.OIDC.Scopes, _ = cc.String("webServer.oidc.scopes")
 	w.Config.OIDC.AllowedUsers, _ = cc.String("webServer.oidc.allowedUsers")
 }

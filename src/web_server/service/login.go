@@ -158,10 +158,6 @@ func (s *Service) buildOIDCLogoutURL(c *gin.Context) string {
 
 	// 获取OIDC配置中的退出URL
 	logoutBaseURL := s.Config.OIDC.LogoutUrl
-	if logoutBaseURL == "" {
-		blog.Warnf("OIDC logout URL not configured, using default")
-		logoutBaseURL = "https://sso.rfc-friso.com/684f89a8a50a4e31e35fc262/oidc/session/end"
-	}
 
 	// 获取用户的id_token
 	idToken, exists := session.Get("oidc_id_token").(string)
