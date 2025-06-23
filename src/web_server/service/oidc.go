@@ -223,6 +223,7 @@ func (s *Service) OIDCCallback(c *gin.Context) {
 	session.Set("oidc_role", "user")
 	session.Set("oidc_avatar_url", "")
 	session.Set("oidc_token", token.AccessToken)
+	session.Set("oidc_id_token", token.IDToken)
 	session.Set("oidc_expire", expireTime)
 
 	// 设置标准会话数据

@@ -18,7 +18,7 @@ import (
 	"configcenter/src/apimachinery/apiserver"
 	"configcenter/src/common"
 	"configcenter/src/common/backbone"
-	cc "configcenter/src/common/ba
+	cc "configcenter/src/common/backbone/configcenter"
 	"configcenter/src/common/blog"
 	"configcenter/src/common/errors"
 	httpheader "configcenter/src/common/http/header"

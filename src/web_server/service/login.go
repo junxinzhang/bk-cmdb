@@ -13,6 +13,7 @@
 package service
 
 import (
+	"fmt"
 	"net/url"
 	"strings"
 	"time"
@@ -33,11 +34,15 @@ func (s *Service) LogOutUser(c *gin.Context) {
 	rid := httpheader.GetRid(c.Request.Header)
 	session := sessions.Default(c)
 
-	// 检查是否是OIDC用户
-	oidcUserInfo, isOIDCUser := session.Get("oidc_user_info").(map[string]interface{})
+	// 检查是否是OIDC用户 - 通过检查oidc_username来判断
+	oidcUsername, isOIDCUser := session.Get("oidc_username").(string)
 
-	if isOIDCUser && oidcUserInfo != nil {
+	if isOIDCUser && oidcUsername != "" {
 		blog.Infof("OIDC user logout, clearing OIDC session, rid: %s", rid)
+
+		// 构建OIDC退出URL (在清除session之前)
+		logoutURL := s.buildOIDCLogoutURL(c)
+		blog.Infof("Built OIDC logout URL: %s, rid: %s", logoutURL, rid)
 
 		// 清除所有会话数据
 		session.Clear()
@@ -47,12 +52,10 @@ func (s *Service) LogOutUser(c *gin.Context) {
 		c.SetCookie(common.HTTPCookieSupplierAccount, "", -1, "/", "", false, false)
 		c.SetCookie(common.HTTPCookieBKToken, "", -1, "/", "", false, false)
 
-		// 构建OIDC退出URL
-		logoutURL := s.buildOIDCLogoutURL(c)
-
 		ret := metadata.LogoutResult{}
 		ret.BaseResp.Result = true
 		ret.Data.LogoutURL = logoutURL
+		blog.Infof("Returning logout response with URL: %s, rid: %s", logoutURL, rid)
 		c.JSON(200, ret)
 		return
 	}
@@ -151,27 +154,26 @@ func (s *Service) LoginUser(c *gin.Context) {
 
 // buildOIDCLogoutURL 构建OIDC退出登录URL
 func (s *Service) buildOIDCLogoutURL(c *gin.Context) string {
-	// 获取OIDC的Issuer配置，通常退出端点是 {issuer}/protocol/openid-connect/logout
-	issuer := s.Config.OIDC.Issuer
-	if issuer == "" {
-		// 如果没有配置issuer，回退到普通登录页面
-		return s.Config.Site.DomainUrl + "/login"
+	session := sessions.Default(c)
+
+	// 获取OIDC配置中的退出URL
+	logoutBaseURL := s.Config.OIDC.LogoutUrl
+	if logoutBaseURL == "" {
+		blog.Warnf("OIDC logout URL not configured, using default")
+		logoutBaseURL = "https://sso.rfc-friso.com/684f89a8a50a4e31e35fc262/oidc/session/end"
 	}
 
-	// 移除末尾的斜杠
-	issuer = strings.TrimRight(issuer, "/")
-
-	// 构建post_logout_redirect_uri
-	redirectURI := s.Config.Site.DomainUrl
-	if redirectURI == "" {
-		redirectURI = "/"
-	} else {
-		redirectURI = strings.TrimRight(redirectURI, "/") + "/login"
+	// 获取用户的id_token
+	idToken, exists := session.Get("oidc_id_token").(string)
+	if !exists || idToken == "" {
+		blog.Warnf("OIDC id_token not found in session, using logout without id_token_hint")
+		// 没有id_token，只能简单退出
+		blog.Infof("OIDC logout URL (no id_token): %s", logoutBaseURL)
+		return logoutBaseURL
 	}
 
-	// 构建OIDC退出URL
-	// 标准OIDC退出端点格式: {issuer}/protocol/openid-connect/logout?post_logout_redirect_uri={redirect_uri}
-	logoutURL := issuer + "/protocol/openid-connect/logout?post_logout_redirect_uri=" + url.QueryEscape(redirectURI)
+	// 构建OIDC退出URL，使用id_token_hint
+	logoutURL := fmt.Sprintf("%s?id_token_hint=%s&post_logout_redirect_uri=%s", logoutBaseURL, url.QueryEscape(idToken), url.QueryEscape(s.Config.OIDC.RedirectUri))
 
 	blog.Infof("OIDC logout URL: %s", logoutURL)
 	return logoutURL

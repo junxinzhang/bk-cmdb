@@ -110,6 +110,7 @@ type OIDC struct {
 	AuthUrl      string `json:"authUrl"`
 	TokenUrl     string `json:"tokenUrl"`
 	UserInfoUrl  string `json:"userInfoUrl"`
+	LogoutUrl    string `json:"logoutUrl"`
 	Scopes       string `json:"scopes"`
 	AllowedUsers string `json:"allowedUsers"`
 }
