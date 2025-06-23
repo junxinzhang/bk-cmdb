@@ -81,6 +81,10 @@ import bizSet from './modules/biz-set.js'
 
 import fieldTemplate from './modules/view/field-template.js'
 
+// 用户管理和权限管理
+import userManagement from './modules/user-management.js'
+import rolePermission from './modules/role-permission.js'
+
 Vue.use(Vuex)
 
 const store = new Vuex.Store({
@@ -147,7 +151,9 @@ const store = new Vuex.Store({
     audit,
     dynamicGroup,
     versionLog,
-    fieldTemplate
+    fieldTemplate,
+    userManagement,
+    rolePermission
   }
 })
 

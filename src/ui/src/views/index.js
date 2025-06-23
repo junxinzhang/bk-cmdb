@@ -56,6 +56,7 @@ import statusError from '@/views/status/error'
  * 平台管理
  */
 import globalConfig from '@/views/global-config/router.config'
+import userManagement from '@/views/user-management/router.config'
 
 import { MENU_BUSINESS } from '@/dictionary/menu-symbol'
 
@@ -136,7 +137,8 @@ export const analysisViews = injectStatusComponents(flatternViews([
 
 
 export const platformManagementViews = injectStatusComponents(flatternViews([
-  globalConfig
+  globalConfig,
+  userManagement
 ]))
 
 export default {

@@ -110,6 +110,7 @@ export const MENU_ANALYSIS_STATISTICS = 'menu_analysis_statistics'
  * 平台管理
  */
 export const MENU_PLATFORM_MANAGEMENT_GLOBAL_CONFIG = 'menu_platform_management_global_config'
+export const MENU_USER_MANAGEMENT = 'menu_user_management'
 
 // 判断收藏的目录id
 export const MENU_RESOURCE_COLLECTION = 'menu_resource_collection'

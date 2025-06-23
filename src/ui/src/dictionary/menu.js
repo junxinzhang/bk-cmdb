@@ -46,6 +46,7 @@ import {
   MENU_ANALYSIS_OPERATION,
 
   MENU_PLATFORM_MANAGEMENT_GLOBAL_CONFIG,
+  MENU_USER_MANAGEMENT,
 } from './menu-symbol'
 import {
   businessSetViews,
@@ -203,6 +204,11 @@ const menus = [{
     i18n: '全局配置',
     icon: 'icon-cc-setting',
     route: getMenuRoute(platformManagementViews, MENU_PLATFORM_MANAGEMENT_GLOBAL_CONFIG)
+  }, {
+    id: MENU_USER_MANAGEMENT,
+    i18n: '用户管理',
+    icon: 'icon-cc-user',
+    route: getMenuRoute(platformManagementViews, MENU_USER_MANAGEMENT)
   }]
 }]
 
