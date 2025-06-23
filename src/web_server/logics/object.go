@@ -72,27 +72,34 @@ func (lgc *Logics) GetObjectCount(ctx context.Context, header http.Header, cond 
 				<-pipeline
 			}()
 
-			// 直接调用 CoreService 进行计数，不区分 common 和非 common 对象
-			params := make(map[string]interface{})
-			if objID == common.BKInnerObjIDApp {
-				params = map[string]interface{}{
-					common.BKDefaultField:    common.DefaultFlagDefaultValue,
-					common.BKDataStatusField: map[string]interface{}{common.BKDBNE: common.DataStatusDisabled},
+			if metadata.IsCommon(objID) {
+				countRes, ccErr := lgc.ApiCli.CountObjectInstances(ctx, header, objID, new(metadata.CommonCountFilter))
+				if ccErr != nil {
+					blog.Errorf("get %s instance count failed, err: %v, rid: %s", objID, ccErr, rid)
+					apiErr = ccErr
+					return
 				}
-			}
-			
-			// 构造表名
-			tableName := common.GetInstTableName(objID, common.BKDefaultOwnerID)
-			count, err := lgc.Engine.CoreAPI.CoreService().Count().GetCountByFilter(ctx, header, tableName, []map[string]interface{}{params})
-			if err != nil {
-				blog.Errorf("get %s instance count failed, err: %v, rid: %s", objID, err, rid)
-				apiErr = defErr.CCErrorf(common.CCErrCommHTTPDoRequestFailed)
-				return
-			}
 
-			if len(count) == 0 {
-				objCount.InstCount = 0
+				objCount.InstCount = countRes.Count
 			} else {
+				params := make(map[string]interface{})
+				if objID == common.BKInnerObjIDApp {
+					params = map[string]interface{}{
+						common.BKDefaultField:    common.DefaultFlagDefaultValue,
+						common.BKDataStatusField: map[string]interface{}{common.BKDBNE: common.DataStatusDisabled},
+					}
+				}
+				count, err := lgc.ApiCli.CountObjInstByFilters(ctx, header, objID, []map[string]interface{}{params})
+				if err != nil {
+					blog.Errorf("get %s instance count failed, err: %v, rid: %s", objID, err, rid)
+					apiErr = defErr.CCErrorf(common.CCErrCommHTTPDoRequestFailed)
+					return
+				}
+
+				if len(count) == 0 {
+					apiErr = defErr.CCErrorf(common.CCErrCommHTTPDoRequestFailed)
+					return
+				}
 				objCount.InstCount = uint64(count[0])
 			}
 			existObjResult[idx] = objCount
@@ -118,8 +125,7 @@ func (lgc *Logics) ProcessObjectIDArray(ctx context.Context, header http.Header,
 	defErr := lgc.CCErr.CreateDefaultCCErrorIf(httpheader.GetLanguage(header))
 
 	objArray := util.RemoveDuplicatesAndEmpty(objectArray)
-	// 直接调用 CoreService 而不是通过 ApiServer
-	objects, err := lgc.Engine.CoreAPI.CoreService().Model().ReadModel(ctx, header, &metadata.QueryCondition{
+	objects, err := lgc.ApiCli.ReadModelForUI(ctx, header, &metadata.QueryCondition{
 		Condition: map[string]interface{}{
 			common.BKObjIDField: map[string]interface{}{
 				common.BKDBIN: objArray,
