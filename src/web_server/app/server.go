@@ -223,6 +223,17 @@ func (w *WebServer) onServerConfigUpdate(previous, current cc.ProcessConfig) {
 	w.Config.DisableOperationStatistic, _ = cc.Bool("operationServer.disableOperationStatistic")
 
 	w.Config.EnableNotification, _ = cc.Bool("webServer.enableNotification")
+
+	// OIDC 配置
+	w.Config.OIDC.Issuer, _ = cc.String("webServer.oidc.issuer")
+	w.Config.OIDC.ClientId, _ = cc.String("webServer.oidc.clientId")
+	w.Config.OIDC.ClientSecret, _ = cc.String("webServer.oidc.clientSecret")
+	w.Config.OIDC.RedirectUri, _ = cc.String("webServer.oidc.redirectUri")
+	w.Config.OIDC.AuthUrl, _ = cc.String("webServer.oidc.authUrl")
+	w.Config.OIDC.TokenUrl, _ = cc.String("webServer.oidc.tokenUrl")
+	w.Config.OIDC.UserInfoUrl, _ = cc.String("webServer.oidc.userInfoUrl")
+	w.Config.OIDC.Scopes, _ = cc.String("webServer.oidc.scopes")
+	w.Config.OIDC.AllowedUsers, _ = cc.String("webServer.oidc.allowedUsers")
 }
 
 // Stop the ccapi server

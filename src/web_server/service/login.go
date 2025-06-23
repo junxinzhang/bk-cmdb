@@ -13,6 +13,7 @@
 package service
 
 import (
+	"net/url"
 	"strings"
 	"time"
 
@@ -29,7 +30,34 @@ import (
 
 // LogOutUser log out user
 func (s *Service) LogOutUser(c *gin.Context) {
+	rid := httpheader.GetRid(c.Request.Header)
 	session := sessions.Default(c)
+
+	// 检查是否是OIDC用户
+	oidcUserInfo, isOIDCUser := session.Get("oidc_user_info").(map[string]interface{})
+
+	if isOIDCUser && oidcUserInfo != nil {
+		blog.Infof("OIDC user logout, clearing OIDC session, rid: %s", rid)
+
+		// 清除所有会话数据
+		session.Clear()
+
+		// 清除Cookie
+		c.SetCookie(common.BKUser, "", -1, "/", "", false, false)
+		c.SetCookie(common.HTTPCookieSupplierAccount, "", -1, "/", "", false, false)
+		c.SetCookie(common.HTTPCookieBKToken, "", -1, "/", "", false, false)
+
+		// 构建OIDC退出URL
+		logoutURL := s.buildOIDCLogoutURL(c)
+
+		ret := metadata.LogoutResult{}
+		ret.BaseResp.Result = true
+		ret.Data.LogoutURL = logoutURL
+		c.JSON(200, ret)
+		return
+	}
+
+	// 非OIDC用户的标准退出流程
 	session.Clear()
 	c.Request.URL.Path = ""
 	userManger := user.NewUser(*s.Config, s.Engine, s.CacheCli, s.ApiCli)
@@ -119,4 +147,32 @@ func (s *Service) LoginUser(c *gin.Context) {
 		"error": defErr.CCError(common.CCErrWebUsernamePasswdWrong).Error(),
 	})
 	return
+}
+
+// buildOIDCLogoutURL 构建OIDC退出登录URL
+func (s *Service) buildOIDCLogoutURL(c *gin.Context) string {
+	// 获取OIDC的Issuer配置，通常退出端点是 {issuer}/protocol/openid-connect/logout
+	issuer := s.Config.OIDC.Issuer
+	if issuer == "" {
+		// 如果没有配置issuer，回退到普通登录页面
+		return s.Config.Site.DomainUrl + "/login"
+	}
+
+	// 移除末尾的斜杠
+	issuer = strings.TrimRight(issuer, "/")
+
+	// 构建post_logout_redirect_uri
+	redirectURI := s.Config.Site.DomainUrl
+	if redirectURI == "" {
+		redirectURI = "/"
+	} else {
+		redirectURI = strings.TrimRight(redirectURI, "/") + "/login"
+	}
+
+	// 构建OIDC退出URL
+	// 标准OIDC退出端点格式: {issuer}/protocol/openid-connect/logout?post_logout_redirect_uri={redirect_uri}
+	logoutURL := issuer + "/protocol/openid-connect/logout?post_logout_redirect_uri=" + url.QueryEscape(redirectURI)
+
+	blog.Infof("OIDC logout URL: %s", logoutURL)
+	return logoutURL
 }

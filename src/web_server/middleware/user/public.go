@@ -18,6 +18,7 @@ import (
 	"configcenter/src/apimachinery/apiserver"
 	"configcenter/src/common"
 	"configcenter/src/common/backbone"
+	cc "configcenter/src/common/ba
 	"configcenter/src/common/blog"
 	"configcenter/src/common/errors"
 	httpheader "configcenter/src/common/http/header"
@@ -37,6 +38,55 @@ type publicUser struct {
 	apiCli   apiserver.ApiServerClientInterface
 }
 
+// smartSelectPlugin 智能选择登录插件
+func (m *publicUser) smartSelectPlugin() metadata.LoginUserPluginInerface {
+	// 检查是否配置了OIDC并且用户已通过OIDC登录
+	if m.isOIDCEnabled() {
+		// 如果配置启用了OIDC，优先使用OIDC插件
+		blog.Infof("OIDC is enabled, trying to use OIDC plugin")
+		plugin := plugins.CurrentPlugin(common.BKOIDCLoginPluginVersion)
+		if plugin != nil {
+			blog.Infof("OIDC plugin found and selected")
+			return plugin
+		}
+		blog.Warnf("OIDC plugin not found, falling back to default")
+	}
+
+	// 否则使用配置的默认插件
+	blog.Infof("Using configured login version: %s", m.config.LoginVersion)
+	plugin := plugins.CurrentPlugin(m.config.LoginVersion)
+	if plugin != nil {
+		blog.Infof("Default plugin found and selected: %s", m.config.LoginVersion)
+		return plugin
+	}
+
+	// 最后回退到开源插件
+	blog.Warnf("Default plugin not found, falling back to opensource plugin")
+	plugin = plugins.CurrentPlugin(common.BKOpenSourceLoginPluginVersion)
+	if plugin != nil {
+		blog.Infof("Opensource plugin found and selected")
+		return plugin
+	}
+
+	blog.Errorf("No login plugin found at all!")
+	return nil
+}
+
+// isOIDCEnabled 检查OIDC是否启用
+func (m *publicUser) isOIDCEnabled() bool {
+	oidcClientId, err := cc.String("webServer.oidc.clientId")
+	if err != nil || oidcClientId == "" {
+		return false
+	}
+
+	oidcAuthUrl, err := cc.String("webServer.oidc.authUrl")
+	if err != nil || oidcAuthUrl == "" {
+		return false
+	}
+
+	return true
+}
+
 // LoginUser  user login
 func (m *publicUser) LoginUser(c *gin.Context) bool {
 	rid := httpheader.GetRid(c.Request.Header)
@@ -49,7 +99,11 @@ func (m *publicUser) LoginUser(c *gin.Context) bool {
 		isMultiOwner = true
 	}
 
-	user := plugins.CurrentPlugin(m.config.LoginVersion)
+	user := m.smartSelectPlugin()
+	if user == nil {
+		blog.Errorf("no valid login plugin found, rid: %s", rid)
+		return false
+	}
 	userInfo, loginSuccess = user.LoginUser(c, m.config.ConfigMap, isMultiOwner)
 
 	if !loginSuccess {
@@ -108,13 +162,13 @@ func (m *publicUser) GetLoginUrl(c *gin.Context) string {
 		}
 	}
 
-	user := plugins.CurrentPlugin(m.config.LoginVersion)
+	user := m.smartSelectPlugin()
 	return user.GetLoginUrl(c, m.config.ConfigMap, params)
 
 }
 
 // GetUserList TODO
 func (m *publicUser) GetUserList(c *gin.Context) ([]*metadata.LoginSystemUserInfo, *errors.RawErrorInfo) {
-	user := plugins.CurrentPlugin(m.config.LoginVersion)
+	user := m.smartSelectPlugin()
 	return user.GetUserList(c, m.config.ConfigMap)
 }

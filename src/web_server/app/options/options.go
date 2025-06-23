@@ -83,6 +83,7 @@ type Config struct {
 	Site                      Site
 	Session                   Session
 	Redis                     redis.Config
+	OIDC                      OIDC
 	Version                   string
 	AgentAppUrl               string
 	LoginUrl                  string
@@ -98,4 +99,17 @@ type Config struct {
 type AppInfo struct {
 	AppCode string `json:"appCode"`
 	URL     string `json:"url"`
+}
+
+// OIDC 配置结构
+type OIDC struct {
+	Issuer       string `json:"issuer"`
+	ClientId     string `json:"clientId"`
+	ClientSecret string `json:"clientSecret"`
+	RedirectUri  string `json:"redirectUri"`
+	AuthUrl      string `json:"authUrl"`
+	TokenUrl     string `json:"tokenUrl"`
+	UserInfoUrl  string `json:"userInfoUrl"`
+	Scopes       string `json:"scopes"`
+	AllowedUsers string `json:"allowedUsers"`
 }

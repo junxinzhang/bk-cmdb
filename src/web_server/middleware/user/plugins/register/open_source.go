@@ -10,7 +10,7 @@
  * limitations under the License.
  */
 
-package manager
+package register
 
 import (
 	// import open-source version login plugin

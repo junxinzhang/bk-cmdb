@@ -17,7 +17,6 @@ import (
 	"configcenter/src/common"
 	"configcenter/src/common/metadata"
 	"configcenter/src/web_server/middleware/user/plugins/manager"
-
 	// register plugins
 	_ "configcenter/src/web_server/middleware/user/plugins/register"
 )
@@ -29,6 +28,8 @@ func CurrentPlugin(version string) metadata.LoginUserPluginInerface {
 	}
 
 	var defaultPlugin *metadata.LoginPluginInfo
+	var opensourcePlugin *metadata.LoginPluginInfo
+
 	for _, plugin := range manager.LoginPluginInfo {
 		if plugin.Version == version {
 			return plugin.HandleFunc
@@ -36,9 +37,18 @@ func CurrentPlugin(version string) metadata.LoginUserPluginInerface {
 		if common.BKBluekingLoginPluginVersion == plugin.Version {
 			defaultPlugin = plugin
 		}
+		if common.BKOpenSourceLoginPluginVersion == plugin.Version {
+			opensourcePlugin = plugin
+		}
 	}
+
 	if nil != defaultPlugin {
 		return defaultPlugin.HandleFunc
+	}
+
+	// 回退到开源插件
+	if nil != opensourcePlugin {
+		return opensourcePlugin.HandleFunc
 	}
 
 	return nil

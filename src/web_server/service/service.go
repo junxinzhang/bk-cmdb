@@ -66,6 +66,34 @@ func (s *Service) WebService() *gin.Engine {
 	middleware.Engine = s.Engine
 	middleware.CacheCli = s.CacheCli
 
+	// Add CORS middleware
+	ws.Use(func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-Requested-With")
+		c.Header("Access-Control-Allow-Credentials", "true")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
+	})
+
+	// Handle OIDC callback when redirected to root with code/state params
+	ws.Use(func(c *gin.Context) {
+		if c.Request.URL.Path == "/" && c.Query("code") != "" && c.Query("state") != "" {
+			// This is an OIDC callback redirected to root, redirect to proper callback
+			newURL := "/oidc/callback?" + c.Request.URL.RawQuery
+			blog.Infof("OIDC callback detected at root, redirecting to: %s", newURL)
+			c.Redirect(302, newURL)
+			c.Abort()
+			return
+		}
+		c.Next()
+	})
+
 	ws.Use(middleware.RequestIDMiddleware)
 	ws.Use(sessions.Sessions(s.Config.Session.Name, s.Session))
 	ws.Use(middleware.ValidLogin(*s.Config, s.Discovery(), s.ApiCli))
@@ -139,6 +167,13 @@ func (s *Service) initService(ws *gin.Engine) {
 	ws.POST("/object/importmany/analysis", s.BatchImportObjectAnalysis)
 	ws.POST("/object/importmany", s.BatchImportObject)
 	ws.GET("/user/list", s.GetUserList)
+
+	// OIDC 路由
+	ws.GET("/oidc/login", s.OIDCLogin)
+	ws.GET("/oidc/callback", s.OIDCCallback)
+	// SSO 登录入口 - 用户主动选择SSO登录
+	ws.GET("/sso/login", s.SSOLogin)
+
 	// suggest move to  Organization
 	ws.GET("/user/department", s.GetDepartment)
 	ws.GET("/user/departmentprofile", s.GetDepartmentProfile)
