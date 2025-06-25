@@ -39,6 +39,7 @@ import (
 	"configcenter/src/apimachinery/coreservice/synchronize"
 	ccSystem "configcenter/src/apimachinery/coreservice/system"
 	"configcenter/src/apimachinery/coreservice/topographics"
+	"configcenter/src/apimachinery/coreservice/usermanagement"
 	"configcenter/src/apimachinery/rest"
 	"configcenter/src/apimachinery/transaction"
 	"configcenter/src/apimachinery/util"
@@ -70,6 +71,7 @@ type CoreServiceClientInterface interface {
 	ModelQuote() modelquote.Interface
 	FieldTemplate() fieldtmpl.Interface
 	IDRule() idrule.Interface
+	UserManagement() usermanagement.UserManagementInterface
 }
 
 // NewCoreServiceClient TODO
@@ -203,4 +205,9 @@ func (c *coreService) FieldTemplate() fieldtmpl.Interface {
 // IDRule return the id rule client
 func (c *coreService) IDRule() idrule.Interface {
 	return idrule.New(c.restCli)
+}
+
+// UserManagement return the user management client
+func (c *coreService) UserManagement() usermanagement.UserManagementInterface {
+	return usermanagement.NewUserManagementInterface(c.restCli)
 }

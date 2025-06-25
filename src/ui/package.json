@@ -10,6 +10,8 @@
     "dev": "node builder/dev.js",
     "build": "node builder/build.js",
     "build:analyzer": "cross-env ANALYZER=true node builder/build.js",
+    "build:copy": "yarn build && node copy-to-web.js",
+    "copy-to-web": "node copy-to-web.js",
     "start": "npm run dev -- --env",
     "lint": "eslint --ext .js,.vue ./src --cache",
     "lint-output": "eslint --ext .js,.vue --output-file ./eslint.html --format html ./src",

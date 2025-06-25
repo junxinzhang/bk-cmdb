@@ -187,7 +187,7 @@ export default {
     async handleToggleStatus(user) {
       try {
         await this.toggleUserStatus({
-          id: user.id,
+          user_id: user.user_id || user.id,
           status: user.status === 'active' ? 'inactive' : 'active'
         })
         this.$bkMessage({

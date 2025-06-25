@@ -270,6 +270,7 @@ type Core interface {
 	CloudOperation() CloudOperation
 	AuthOperation() AuthOperation
 	CommonOperation() CommonOperation
+	UserManagementOperation() UserManagementOperation
 }
 
 // ProcessOperation methods
@@ -447,6 +448,36 @@ type CommonOperation interface {
 	GetDistinctCount(kit *rest.Kit, param *metadata.DistinctFieldOption) (int64, errors.CCErrorCoder)
 }
 
+// UserManagementOperation 用户管理操作接口
+type UserManagementOperation interface {
+	// 用户管理
+	CreateUser(kit *rest.Kit, data *metadata.CreateUserRequest) (*metadata.User, errors.CCErrorCoder)
+	UpdateUser(kit *rest.Kit, userID string, data *metadata.UpdateUserRequest) (*metadata.User, errors.CCErrorCoder)
+	DeleteUser(kit *rest.Kit, userID string) errors.CCErrorCoder
+	GetUser(kit *rest.Kit, userID string) (*metadata.User, errors.CCErrorCoder)
+	ListUsers(kit *rest.Kit, params *metadata.UserListRequest) (*metadata.UserListResult, errors.CCErrorCoder)
+	BatchDeleteUsers(kit *rest.Kit, data *metadata.BatchDeleteUsersRequest) errors.CCErrorCoder
+	
+	// 用户状态管理
+	ToggleUserStatus(kit *rest.Kit, userID string, data *metadata.UserStatusRequest) (*metadata.User, errors.CCErrorCoder)
+	ResetUserPassword(kit *rest.Kit, userID string) (*metadata.ResetPasswordResult, errors.CCErrorCoder)
+	
+	// 用户统计和查询
+	GetUserStatistics(kit *rest.Kit) (*metadata.UserStatistics, errors.CCErrorCoder)
+	ValidateEmail(kit *rest.Kit, data *metadata.ValidateEmailRequest) (*metadata.ValidateEmailResult, errors.CCErrorCoder)
+	
+	// 角色权限管理
+	CreateRolePermission(kit *rest.Kit, data *metadata.CreateRolePermissionRequest) (*metadata.RolePermission, errors.CCErrorCoder)
+	UpdateRolePermission(kit *rest.Kit, roleID string, data *metadata.UpdateRolePermissionRequest) (*metadata.RolePermission, errors.CCErrorCoder)
+	DeleteRolePermission(kit *rest.Kit, roleID string) errors.CCErrorCoder
+	GetRolePermission(kit *rest.Kit, roleID string) (*metadata.RolePermission, errors.CCErrorCoder)
+	ListRolePermissions(kit *rest.Kit) ([]metadata.RolePermission, errors.CCErrorCoder)
+	
+	// 权限矩阵
+	GetPermissionMatrix(kit *rest.Kit) (*metadata.PermissionMatrix, errors.CCErrorCoder)
+	GetUserRoles(kit *rest.Kit, roleID string) ([]metadata.UserRoleInfo, errors.CCErrorCoder)
+}
+
 type core struct {
 	model           ModelOperation
 	instance        InstanceOperation
@@ -465,6 +496,7 @@ type core struct {
 	cloud           CloudOperation
 	auth            AuthOperation
 	common          CommonOperation
+	userManagement  UserManagementOperation
 }
 
 // New create core
@@ -485,6 +517,7 @@ func New(
 	cloud CloudOperation,
 	auth AuthOperation,
 	common CommonOperation,
+	userManagement UserManagementOperation,
 ) Core {
 	return &core{
 		model:           model,
@@ -504,6 +537,7 @@ func New(
 		cloud:           cloud,
 		auth:            auth,
 		common:          common,
+		userManagement:  userManagement,
 	}
 }
 
@@ -590,4 +624,9 @@ func (m *core) AuthOperation() AuthOperation {
 // CommonOperation TODO
 func (m *core) CommonOperation() CommonOperation {
 	return m.common
+}
+
+// UserManagementOperation TODO
+func (m *core) UserManagementOperation() UserManagementOperation {
+	return m.userManagement
 }

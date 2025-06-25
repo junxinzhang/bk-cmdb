@@ -1,4 +1,4 @@
-import userManagementApi from './api/user-management'
+import $http from '@/api'
 
 const state = {
   userList: [],
@@ -99,22 +99,23 @@ const mutations = {
   },
   
   updateUser(state, updatedUser) {
-    const index = state.userList.findIndex(user => user.id === updatedUser.id)
+    const userId = updatedUser.user_id || updatedUser.id
+    const index = state.userList.findIndex(user => (user.user_id || user.id) === userId)
     if (index !== -1) {
       state.userList.splice(index, 1, updatedUser)
     }
-    if (state.currentUser && state.currentUser.id === updatedUser.id) {
+    if (state.currentUser && (state.currentUser.user_id || state.currentUser.id) === userId) {
       state.currentUser = updatedUser
     }
   },
   
   removeUser(state, userId) {
-    const index = state.userList.findIndex(user => user.id === userId)
+    const index = state.userList.findIndex(user => (user.user_id || user.id) === userId)
     if (index !== -1) {
       state.userList.splice(index, 1)
       state.pagination.count -= 1
     }
-    if (state.currentUser && state.currentUser.id === userId) {
+    if (state.currentUser && (state.currentUser.user_id || state.currentUser.id) === userId) {
       state.currentUser = null
     }
   },
@@ -150,14 +151,19 @@ const actions = {
         status: params.status || state.searchFilters.status
       }
       
-      const response = await this.dispatch('api/userManagement/getUserList', requestParams)
+      const response = await $http.get('usermgmt/list', {
+        params: requestParams
+      })
+      
+      // response 就是完整的API响应
+      const apiData = response
       
       commit('setUserList', {
-        list: response.data?.items || response.data || [],
+        list: apiData.items || [],
         pagination: {
-          current: response.data?.page || requestParams.page,
-          count: response.data?.total || response.data?.count || 0,
-          limit: response.data?.limit || requestParams.limit
+          current: apiData.page || requestParams.page,
+          count: apiData.total || apiData.count || 0,
+          limit: apiData.limit || requestParams.limit
         }
       })
       
@@ -171,7 +177,7 @@ const actions = {
   async getUserDetail({ commit }, userId) {
     commit('setLoading', { type: 'detail', loading: true })
     try {
-      const user = await this.dispatch('api/userManagement/getUserDetail', userId)
+      const user = await this.dispatch('userManagement/api/getUserDetail', userId)
       commit('setCurrentUser', user)
       return user
     } finally {
@@ -183,7 +189,7 @@ const actions = {
   async createUser({ commit }, userData) {
     commit('setLoading', { type: 'create', loading: true })
     try {
-      const user = await this.dispatch('api/userManagement/createUser', userData)
+      const user = await this.dispatch('userManagement/api/createUser', userData)
       commit('addUser', user)
       return user
     } finally {
@@ -195,7 +201,7 @@ const actions = {
   async updateUser({ commit }, { id, ...userData }) {
     commit('setLoading', { type: 'update', loading: true })
     try {
-      const user = await this.dispatch('api/userManagement/updateUser', { id, ...userData })
+      const user = await this.dispatch('userManagement/api/updateUser', { id, ...userData })
       commit('updateUser', user)
       return user
     } finally {
@@ -207,7 +213,7 @@ const actions = {
   async deleteUser({ commit }, userId) {
     commit('setLoading', { type: 'delete', loading: true })
     try {
-      await this.dispatch('api/userManagement/deleteUser', userId)
+      await this.dispatch('userManagement/api/deleteUser', userId)
       commit('removeUser', userId)
       return true
     } finally {
@@ -216,9 +222,9 @@ const actions = {
   },
   
   // 切换用户状态
-  async toggleUserStatus({ commit }, { id, status }) {
+  async toggleUserStatus({ commit }, { user_id, status }) {
     try {
-      const user = await this.dispatch('api/userManagement/toggleUserStatus', { id, status })
+      const user = await this.dispatch('userManagement/api/toggleUserStatus', { user_id, status })
       commit('updateUser', user)
       return user
     } catch (error) {
@@ -230,7 +236,7 @@ const actions = {
   async batchDeleteUsers({ commit }, userIds) {
     commit('setLoading', { type: 'delete', loading: true })
     try {
-      await this.dispatch('api/userManagement/batchDeleteUsers', userIds)
+      await this.dispatch('userManagement/api/batchDeleteUsers', userIds)
       userIds.forEach(id => {
         commit('removeUser', id)
       })
@@ -243,7 +249,7 @@ const actions = {
   // 重置用户密码
   async resetUserPassword({ commit }, userId) {
     try {
-      return await this.dispatch('api/userManagement/resetUserPassword', userId)
+      return await this.dispatch('userManagement/api/resetUserPassword', userId)
     } catch (error) {
       throw error
     }
@@ -252,7 +258,7 @@ const actions = {
   // 导出用户列表
   async exportUsers({ commit }, params = {}) {
     try {
-      return await this.dispatch('api/userManagement/exportUsers', params)
+      return await this.dispatch('userManagement/api/exportUsers', params)
     } catch (error) {
       throw error
     }
@@ -261,7 +267,7 @@ const actions = {
   // 导入用户
   async importUsers({ commit }, formData) {
     try {
-      return await this.dispatch('api/userManagement/importUsers', formData)
+      return await this.dispatch('userManagement/api/importUsers', formData)
     } catch (error) {
       throw error
     }
@@ -270,7 +276,7 @@ const actions = {
   // 获取用户统计信息
   async getUserStatistics({ commit }) {
     try {
-      return await this.dispatch('api/userManagement/getUserStatistics')
+      return await this.dispatch('userManagement/api/getUserStatistics')
     } catch (error) {
       throw error
     }
@@ -279,7 +285,7 @@ const actions = {
   // 验证邮箱是否可用
   async validateEmail({ commit }, email) {
     try {
-      return await this.dispatch('api/userManagement/validateEmail', email)
+      return await this.dispatch('userManagement/api/validateEmail', email)
     } catch (error) {
       throw error
     }
@@ -310,8 +316,5 @@ export default {
   state,
   getters,
   mutations,
-  actions,
-  modules: {
-    api: userManagementApi
-  }
+  actions
 }

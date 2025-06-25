@@ -581,6 +581,7 @@ func (s *coreService) initService(web *restful.WebService) {
 	s.initCloudSync(web)
 	s.initAuth(web)
 	s.initCommon(web)
+	s.initUserManagement(web)
 	kube.InitKube(c)
 	s.initProject(web)
 	s.initModelQuote(web)
@@ -588,4 +589,44 @@ func (s *coreService) initService(web *restful.WebService) {
 	idrule.InitIDRule(c)
 
 	c.Utility.AddToRestfulWebService(web)
+}
+
+func (s *coreService) initUserManagement(web *restful.WebService) {
+	utility := rest.NewRestUtility(rest.Config{
+		ErrorIf:  s.engine.CCErr,
+		Language: s.engine.Language,
+	})
+
+	// 用户管理API
+	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/create/user", Handler: s.CreateUser})
+	utility.AddHandler(rest.Action{Verb: http.MethodPut, Path: "/update/user/{user_id}", Handler: s.UpdateUser})
+	utility.AddHandler(rest.Action{Verb: http.MethodDelete, Path: "/delete/user/{user_id}", Handler: s.DeleteUser})
+	utility.AddHandler(rest.Action{Verb: http.MethodGet, Path: "/find/user/{user_id}", Handler: s.GetUser})
+	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/find/users", Handler: s.ListUsers})
+	utility.AddHandler(rest.Action{Verb: http.MethodDelete, Path: "/delete/users/batch", Handler: s.BatchDeleteUsers})
+	
+	// 用户状态管理API
+	utility.AddHandler(rest.Action{Verb: http.MethodPut, Path: "/update/user/{user_id}/status", Handler: s.ToggleUserStatus})
+	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/update/user/{user_id}/reset-password", Handler: s.ResetUserPassword})
+	
+	// 用户统计和查询API
+	utility.AddHandler(rest.Action{Verb: http.MethodGet, Path: "/find/users/statistics", Handler: s.GetUserStatistics})
+	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/validate/email", Handler: s.ValidateEmail})
+	
+	// 用户导入导出API
+	utility.AddHandler(rest.Action{Verb: http.MethodGet, Path: "/export/users", Handler: s.ExportUsers})
+	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/import/users", Handler: s.ImportUsers})
+	
+	// 角色权限管理API
+	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/create/role-permission", Handler: s.CreateRolePermission})
+	utility.AddHandler(rest.Action{Verb: http.MethodPut, Path: "/update/role-permission/{role_id}", Handler: s.UpdateRolePermission})
+	utility.AddHandler(rest.Action{Verb: http.MethodDelete, Path: "/delete/role-permission/{role_id}", Handler: s.DeleteRolePermission})
+	utility.AddHandler(rest.Action{Verb: http.MethodGet, Path: "/find/role-permission/{role_id}", Handler: s.GetRolePermission})
+	utility.AddHandler(rest.Action{Verb: http.MethodGet, Path: "/find/role-permissions", Handler: s.ListRolePermissions})
+	
+	// 权限矩阵API
+	utility.AddHandler(rest.Action{Verb: http.MethodGet, Path: "/find/permission-matrix", Handler: s.GetPermissionMatrix})
+	utility.AddHandler(rest.Action{Verb: http.MethodGet, Path: "/find/role/{role_id}/users", Handler: s.GetUserRoles})
+
+	utility.AddToRestfulWebService(web)
 }

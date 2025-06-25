@@ -166,7 +166,6 @@ func (s *Service) initService(ws *gin.Engine) {
 	ws.POST("/object/exportmany", s.BatchExportObject)
 	ws.POST("/object/importmany/analysis", s.BatchImportObjectAnalysis)
 	ws.POST("/object/importmany", s.BatchImportObject)
-	ws.GET("/user/list", s.GetUserList)
 
 	// OIDC 路由
 	ws.GET("/oidc/login", s.OIDCLogin)
@@ -199,6 +198,9 @@ func (s *Service) initService(ws *gin.Engine) {
 	ws.POST("findmany/changelog", s.GetVersionList)
 	ws.POST("find/changelog/detail", s.GetVersionDetail)
 
+	// user management api
+	s.InitUserManagement(ws)
+	
 	// common api
 	ws.GET("/healthz", s.Healthz)
 	ws.GET("/version", ginservice.Version)

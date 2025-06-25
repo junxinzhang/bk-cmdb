@@ -42,6 +42,7 @@ import (
 	"configcenter/src/source_controller/coreservice/core/process"
 	"configcenter/src/source_controller/coreservice/core/settemplate"
 	dbSystem "configcenter/src/source_controller/coreservice/core/system"
+	"configcenter/src/source_controller/coreservice/core/usermanagement"
 	"configcenter/src/storage/driver/mongodb"
 	"configcenter/src/thirdparty/logplatform/opentelemetry"
 
@@ -125,6 +126,7 @@ func (s *coreService) SetConfig(cfg options.Config, engine *backbone.Engine, err
 		cloud.New(mongodb.Client()),
 		auth.New(mongodb.Client()),
 		coreCommon.New(),
+		usermanagement.New(mongodb.Client()),
 	)
 	return nil
 }

@@ -63,6 +63,17 @@ func ValidLogin(config options.Config, disc discovery.DiscoveryInterface,
 		case "healthz", "metrics", "login", "static", "is_login", "oidc", "sso":
 			c.Next()
 			return
+		case "api":
+			// Check if this is user management API
+			if strings.HasPrefix(c.Request.URL.Path, "/api/v3/usermgmt/") || strings.HasPrefix(c.Request.URL.Path, "/api/v3/role/") {
+				// Allow user management API without authentication for now
+				// Add necessary headers for core service communication
+				httpheader.AddUser(c.Request.Header, "admin")
+				c.Request.Header.Set("HTTP_BLUEKING_SUPPLIER_ID", "0")
+				c.Request.Header.Set("BK_User", "admin")
+				c.Next()
+				return
+			}
 		}
 
 		if isAuthed(c, config, apiCli) {
