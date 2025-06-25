@@ -93,7 +93,7 @@ export default {
           title: '确认删除',
           subTitle: `确定要删除用户 ${user.name} 吗？`,
           confirmFn: async () => {
-            await this.deleteUser(user.id)
+            await this.deleteUser(user._id || user.id || user.user_id)
             this.$bkMessage({
               theme: 'success',
               message: '删除成功'
@@ -113,7 +113,7 @@ export default {
       try {
         const formData = await this.$refs.userForm.validate()
         if (this.isEditMode) {
-          await this.updateUser({ id: this.currentUser.id, ...formData })
+          await this.updateUser({ id: this.currentUser._id || this.currentUser.id || this.currentUser.user_id, ...formData })
           this.$bkMessage({
             theme: 'success',
             message: '更新成功'

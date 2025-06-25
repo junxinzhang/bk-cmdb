@@ -99,23 +99,53 @@ const mutations = {
   },
   
   updateUser(state, updatedUser) {
-    const userId = updatedUser.user_id || updatedUser.id
-    const index = state.userList.findIndex(user => (user.user_id || user.id) === userId)
-    if (index !== -1) {
-      state.userList.splice(index, 1, updatedUser)
+    if (!updatedUser) {
+      console.error('updateUser mutation called with undefined user')
+      return
     }
-    if (state.currentUser && (state.currentUser.user_id || state.currentUser.id) === userId) {
-      state.currentUser = updatedUser
+    const userId = updatedUser._id || updatedUser.id || updatedUser.user_id
+    if (!userId) {
+      console.error('updateUser mutation: user has no _id, id or user_id', updatedUser)
+      return
+    }
+    
+    const index = state.userList.findIndex(user => (user._id || user.id || user.user_id) === userId)
+    if (index !== -1) {
+      // 如果 updatedUser 只包含部分数据（比如只有状态），则合并到现有用户数据中
+      if (Object.keys(updatedUser).length <= 3 && updatedUser.status) {
+        // 部分更新，只更新特定字段
+        state.userList[index] = {
+          ...state.userList[index],
+          ...updatedUser,
+          updated_at: new Date().toISOString()
+        }
+      } else {
+        // 完整更新
+        state.userList.splice(index, 1, updatedUser)
+      }
+    }
+    
+    if (state.currentUser && (state.currentUser._id || state.currentUser.id || state.currentUser.user_id) === userId) {
+      if (Object.keys(updatedUser).length <= 3 && updatedUser.status) {
+        // 部分更新当前用户
+        state.currentUser = {
+          ...state.currentUser,
+          ...updatedUser,
+          updated_at: new Date().toISOString()
+        }
+      } else {
+        state.currentUser = updatedUser
+      }
     }
   },
   
   removeUser(state, userId) {
-    const index = state.userList.findIndex(user => (user.user_id || user.id) === userId)
+    const index = state.userList.findIndex(user => (user._id || user.id || user.user_id) === userId)
     if (index !== -1) {
       state.userList.splice(index, 1)
       state.pagination.count -= 1
     }
-    if (state.currentUser && (state.currentUser.user_id || state.currentUser.id) === userId) {
+    if (state.currentUser && (state.currentUser._id || state.currentUser.id || state.currentUser.user_id) === userId) {
       state.currentUser = null
     }
   },
@@ -155,8 +185,8 @@ const actions = {
         params: requestParams
       })
       
-      // response 就是完整的API响应
-      const apiData = response
+      // response.data 是API响应的数据部分
+      const apiData = response.data || response
       
       commit('setUserList', {
         list: apiData.items || [],
@@ -189,7 +219,9 @@ const actions = {
   async createUser({ commit }, userData) {
     commit('setLoading', { type: 'create', loading: true })
     try {
-      const user = await this.dispatch('userManagement/api/createUser', userData)
+      const response = await $http.post('usermgmt/create', userData)
+      // Handle CMDB API response format
+      const user = response.data?.data || response.data || response
       commit('addUser', user)
       return user
     } finally {
@@ -198,12 +230,80 @@ const actions = {
   },
   
   // 更新用户
-  async updateUser({ commit }, { id, ...userData }) {
+  async updateUser({ commit, dispatch }, { id, ...userData }) {
     commit('setLoading', { type: 'update', loading: true })
     try {
-      const user = await this.dispatch('userManagement/api/updateUser', { id, ...userData })
-      commit('updateUser', user)
-      return user
+      const response = await $http.put(`usermgmt/${id}`, userData)
+      console.log('Update user response:', response)
+      
+      // Handle CMDB API response format - try multiple possible response structures
+      let user = null
+      if (response.data && typeof response.data === 'object') {
+        // Standard CMDB format: { result: true, code: 0, data: {...} }
+        if (response.data.data) {
+          user = response.data.data
+        }
+        // Direct data format: { _id: "...", name: "...", ... }
+        else if (response.data._id || response.data.user_id || response.data.email) {
+          user = response.data
+        }
+      }
+      // Fallback to response itself
+      if (!user && (response._id || response.user_id)) {
+        user = response
+      }
+      
+      console.log('Extracted user data:', user)
+      
+      if (user && (user._id || user.user_id || user.email)) {
+        commit('updateUser', user)
+        return user
+      } else {
+        // If no user data returned, try to refresh the user list to get updated data
+        console.warn('No user data in update response, refreshing user list')
+        await dispatch('getUserList')
+        return { user_id: id, ...userData }
+      }
+    } catch (error) {
+      console.error('Update user error:', error)
+      throw error
+    } finally {
+      commit('setLoading', { type: 'update', loading: false })
+    }
+  },
+
+  // 编辑用户
+  async editUser({ commit, dispatch }, { id, ...userData }) {
+    commit('setLoading', { type: 'update', loading: true })
+    try {
+      const response = await $http.put(`usermgmt/${id}`, userData)
+      
+      // Handle CMDB API response format - try multiple possible response structures
+      let user = null
+      if (response.data && typeof response.data === 'object') {
+        // Standard CMDB format: { result: true, code: 0, data: {...} }
+        if (response.data.data) {
+          user = response.data.data
+        }
+        // Direct data format: { _id: "...", name: "...", ... }
+        else if (response.data._id || response.data.user_id || response.data.email) {
+          user = response.data
+        }
+      }
+      // Fallback to response itself
+      if (!user && (response._id || response.user_id)) {
+        user = response
+      }
+      
+      if (user && (user._id || user.user_id || user.email)) {
+        commit('updateUser', user)
+        return user
+      } else {
+        // If no user data returned, try to refresh the user list to get updated data
+        console.warn('No user data in edit response, refreshing user list')
+        await dispatch('getUserList')
+        return { user_id: id, ...userData }
+      }
     } finally {
       commit('setLoading', { type: 'update', loading: false })
     }
@@ -213,11 +313,95 @@ const actions = {
   async deleteUser({ commit }, userId) {
     commit('setLoading', { type: 'delete', loading: true })
     try {
-      await this.dispatch('userManagement/api/deleteUser', userId)
+      await $http.delete(`usermgmt/${userId}`)
       commit('removeUser', userId)
       return true
     } finally {
       commit('setLoading', { type: 'delete', loading: false })
+    }
+  },
+
+  // 禁用用户
+  async disableUser({ commit }, userId) {
+    commit('setLoading', { type: 'update', loading: true })
+    try {
+      const response = await $http.put(`usermgmt/${userId}/disable`)
+      console.log('Disable user response:', response)
+      
+      // Handle CMDB API response format
+      let user = null
+      if (response.data && typeof response.data === 'object') {
+        if (response.data.data) {
+          user = response.data.data
+        } else if (response.data._id || response.data.user_id || response.data.email) {
+          user = response.data
+        }
+      }
+      if (!user && (response._id || response.user_id)) {
+        user = response
+      }
+      
+      if (user && (user._id || user.user_id || user.email)) {
+        commit('updateUser', user)
+        return user
+      } else {
+        console.warn('No user data in disable response, the user may have been disabled successfully')
+        // 禁用成功但没有返回用户数据，手动更新状态
+        const updatedUser = { 
+          _id: userId, 
+          user_id: userId, 
+          status: 'inactive' 
+        }
+        commit('updateUser', updatedUser)
+        return updatedUser
+      }
+    } catch (error) {
+      console.error('Disable user error:', error)
+      throw error
+    } finally {
+      commit('setLoading', { type: 'update', loading: false })
+    }
+  },
+
+  // 启用用户
+  async enableUser({ commit }, userId) {
+    commit('setLoading', { type: 'update', loading: true })
+    try {
+      const response = await $http.put(`usermgmt/${userId}/enable`)
+      console.log('Enable user response:', response)
+      
+      // Handle CMDB API response format
+      let user = null
+      if (response.data && typeof response.data === 'object') {
+        if (response.data.data) {
+          user = response.data.data
+        } else if (response.data._id || response.data.user_id || response.data.email) {
+          user = response.data
+        }
+      }
+      if (!user && (response._id || response.user_id)) {
+        user = response
+      }
+      
+      if (user && (user._id || user.user_id || user.email)) {
+        commit('updateUser', user)
+        return user
+      } else {
+        console.warn('No user data in enable response, the user may have been enabled successfully')
+        // 启用成功但没有返回用户数据，手动更新状态
+        const updatedUser = { 
+          _id: userId, 
+          user_id: userId, 
+          status: 'active' 
+        }
+        commit('updateUser', updatedUser)
+        return updatedUser
+      }
+    } catch (error) {
+      console.error('Enable user error:', error)
+      throw error
+    } finally {
+      commit('setLoading', { type: 'update', loading: false })
     }
   },
   
@@ -247,7 +431,7 @@ const actions = {
   },
   
   // 重置用户密码
-  async resetUserPassword({ commit }, userId) {
+  async resetUserPassword({ }, userId) {
     try {
       return await this.dispatch('userManagement/api/resetUserPassword', userId)
     } catch (error) {
@@ -256,7 +440,7 @@ const actions = {
   },
   
   // 导出用户列表
-  async exportUsers({ commit }, params = {}) {
+  async exportUsers({ }, params = {}) {
     try {
       return await this.dispatch('userManagement/api/exportUsers', params)
     } catch (error) {
@@ -265,7 +449,7 @@ const actions = {
   },
   
   // 导入用户
-  async importUsers({ commit }, formData) {
+  async importUsers({ }, formData) {
     try {
       return await this.dispatch('userManagement/api/importUsers', formData)
     } catch (error) {
@@ -274,7 +458,7 @@ const actions = {
   },
   
   // 获取用户统计信息
-  async getUserStatistics({ commit }) {
+  async getUserStatistics({ }) {
     try {
       return await this.dispatch('userManagement/api/getUserStatistics')
     } catch (error) {
@@ -283,7 +467,7 @@ const actions = {
   },
   
   // 验证邮箱是否可用
-  async validateEmail({ commit }, email) {
+  async validateEmail({ }, email) {
     try {
       return await this.dispatch('userManagement/api/validateEmail', email)
     } catch (error) {

@@ -59,8 +59,8 @@
       
       <bk-table-column prop="status" label="状态" min-width="80">
         <template slot-scope="props">
-          <bk-tag :theme="props.row.status === 'active' ? 'success' : 'danger'">
-            {{ props.row.status === 'active' ? '启用' : '禁用' }}
+          <bk-tag :theme="getStatusTheme(props.row.status)">
+            {{ getStatusLabel(props.row.status) }}
           </bk-tag>
         </template>
       </bk-table-column>
@@ -87,9 +87,10 @@
           </bk-button>
           <bk-button
             text
-            :theme="props.row.status === 'active' ? 'warning' : 'success'"
+            :theme="getToggleButtonTheme(props.row.status)"
+            :disabled="props.row.status === 'locked'"
             @click="handleToggleStatus(props.row)">
-            {{ props.row.status === 'active' ? '禁用' : '启用' }}
+            {{ getToggleButtonLabel(props.row.status) }}
           </bk-button>
           <bk-button
             text
@@ -132,7 +133,9 @@ export default {
   methods: {
     ...mapActions('userManagement', [
       'getUserList',
-      'toggleUserStatus'
+      'toggleUserStatus',
+      'disableUser',
+      'enableUser'
     ]),
 
     async fetchUsers() {
@@ -185,17 +188,39 @@ export default {
     },
 
     async handleToggleStatus(user) {
-      try {
-        await this.toggleUserStatus({
-          user_id: user.user_id || user.id,
-          status: user.status === 'active' ? 'inactive' : 'active'
-        })
+      // 检查用户是否被锁定
+      if (user.status === 'locked') {
         this.$bkMessage({
-          theme: 'success',
-          message: user.status === 'active' ? '用户已禁用' : '用户已启用'
+          theme: 'warning',
+          message: '无法操作已锁定的用户'
         })
+        return
+      }
+      
+      try {
+        const userId = user._id || user.id || user.user_id
+        const isActive = user.status === 'active'
+        
+        if (isActive) {
+          // 禁用用户
+          await this.disableUser(userId)
+          this.$bkMessage({
+            theme: 'success',
+            message: '用户已禁用'
+          })
+        } else {
+          // 启用用户
+          await this.enableUser(userId)
+          this.$bkMessage({
+            theme: 'success',
+            message: '用户已启用'
+          })
+        }
+        
+        // 刷新用户列表以显示最新状态
         this.fetchUsers()
       } catch (error) {
+        console.error('Toggle user status error:', error)
         this.$bkMessage({
           theme: 'error',
           message: error.message || '操作失败'
@@ -213,6 +238,38 @@ export default {
         operator: '操作员'
       }
       return roleMap[role] || role
+    },
+
+    getStatusTheme(status) {
+      const statusThemeMap = {
+        active: 'success',
+        inactive: 'danger',
+        locked: 'warning'
+      }
+      return statusThemeMap[status] || 'danger'
+    },
+
+    getStatusLabel(status) {
+      const statusLabelMap = {
+        active: '启用',
+        inactive: '禁用',
+        locked: '锁定'
+      }
+      return statusLabelMap[status] || '未知'
+    },
+
+    getToggleButtonTheme(status) {
+      if (status === 'active') return 'warning'
+      if (status === 'inactive') return 'success'
+      if (status === 'locked') return 'default'
+      return 'default'
+    },
+
+    getToggleButtonLabel(status) {
+      if (status === 'active') return '禁用'
+      if (status === 'inactive') return '启用'
+      if (status === 'locked') return '已锁定'
+      return '操作'
     },
 
     formatDisplayTime(timestamp) {

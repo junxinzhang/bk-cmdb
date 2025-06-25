@@ -9,7 +9,6 @@
       <bk-form-item label="邮箱" property="email" required>
         <bk-input
           v-model="formData.email"
-          :disabled="isEdit"
           placeholder="请输入用户邮箱">
         </bk-input>
       </bk-form-item>

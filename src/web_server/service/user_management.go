@@ -37,6 +37,8 @@ func (s *Service) InitUserManagement(web *gin.Engine) {
 		
 		// 用户状态管理
 		userGroup.PATCH("/:user_id/status", s.toggleUserStatus)
+		userGroup.PUT("/:user_id/disable", s.disableUser)
+		userGroup.PUT("/:user_id/enable", s.enableUser)
 		userGroup.POST("/:user_id/reset-password", s.resetUserPassword)
 		
 		// 用户统计和查询
@@ -725,5 +727,73 @@ func (s *Service) getUserRoles(c *gin.Context) {
 			ErrMsg: "",
 		},
 		Data: userRoles,
+	})
+}
+
+// disableUser 禁用用户
+func (s *Service) disableUser(c *gin.Context) {
+	kit := rest.NewKitFromHeader(c.Request.Header, s.CCErr)
+	userID := c.Param("user_id")
+	
+	// 构建禁用请求数据
+	data := &metadata.UserStatusRequest{
+		Status: metadata.UserStatusInactive,
+	}
+	
+	// 调用核心服务
+	user, err := s.CoreAPI.CoreService().UserManagement().ToggleUserStatus(kit.Ctx, c.Request.Header, userID, data)
+	if err != nil {
+		blog.Errorf("disable user failed, err: %v, user_id: %s, rid: %s", err, userID, kit.Rid)
+		c.JSON(http.StatusInternalServerError, metadata.UpdateUserResponse{
+			BaseResp: metadata.BaseResp{
+				Result: false,
+				Code:   common.CCErrCommHTTPDoRequestFailed,
+				ErrMsg: err.Error(),
+			},
+		})
+		return
+	}
+	
+	c.JSON(http.StatusOK, metadata.UpdateUserResponse{
+		BaseResp: metadata.BaseResp{
+			Result: true,
+			Code:   0,
+			ErrMsg: "",
+		},
+		Data: user,
+	})
+}
+
+// enableUser 启用用户
+func (s *Service) enableUser(c *gin.Context) {
+	kit := rest.NewKitFromHeader(c.Request.Header, s.CCErr)
+	userID := c.Param("user_id")
+	
+	// 构建启用请求数据
+	data := &metadata.UserStatusRequest{
+		Status: metadata.UserStatusActive,
+	}
+	
+	// 调用核心服务
+	user, err := s.CoreAPI.CoreService().UserManagement().ToggleUserStatus(kit.Ctx, c.Request.Header, userID, data)
+	if err != nil {
+		blog.Errorf("enable user failed, err: %v, user_id: %s, rid: %s", err, userID, kit.Rid)
+		c.JSON(http.StatusInternalServerError, metadata.UpdateUserResponse{
+			BaseResp: metadata.BaseResp{
+				Result: false,
+				Code:   common.CCErrCommHTTPDoRequestFailed,
+				ErrMsg: err.Error(),
+			},
+		})
+		return
+	}
+	
+	c.JSON(http.StatusOK, metadata.UpdateUserResponse{
+		BaseResp: metadata.BaseResp{
+			Result: true,
+			Code:   0,
+			ErrMsg: "",
+		},
+		Data: user,
 	})
 }
