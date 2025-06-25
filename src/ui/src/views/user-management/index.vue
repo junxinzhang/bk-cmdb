@@ -23,9 +23,6 @@
         <bk-tab-panel name="roles" label="角色管理">
           <role-management />
         </bk-tab-panel>
-        <bk-tab-panel name="permissions" label="权限设置">
-          <permission-settings />
-        </bk-tab-panel>
       </bk-tab>
     </div>
 
@@ -49,7 +46,6 @@
 import UserList from './user-list.vue'
 import UserForm from './user-form.vue'
 import RoleManagement from './role-management.vue'
-import PermissionSettings from './permission-settings.vue'
 import { mapActions } from 'vuex'
 
 export default {
@@ -57,8 +53,7 @@ export default {
   components: {
     UserList,
     UserForm,
-    RoleManagement,
-    PermissionSettings
+    RoleManagement
   },
   data() {
     return {
