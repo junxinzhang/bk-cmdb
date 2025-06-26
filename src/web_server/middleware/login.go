@@ -24,6 +24,8 @@ import (
 	"configcenter/src/common/blog"
 	httpheader "configcenter/src/common/http/header"
 	"configcenter/src/common/http/httpclient"
+	"configcenter/src/common/http/rest"
+	"configcenter/src/common/metadata"
 	"configcenter/src/common/resource/apigw"
 	"configcenter/src/common/resource/esb"
 	"configcenter/src/common/resource/jwt"
@@ -195,6 +197,73 @@ func isAuthed(c *gin.Context, config options.Config, apiCli apiserver.ApiServerC
 	if nil != err || bkToken != ccToken {
 		return user.LoginUser(c)
 	}
-	return true
 
+	// 检查用户状态 - 实时验证用户是否被禁用
+	if !checkUserStatus(c, userName, apiCli, rid) {
+		blog.Warnf("user %s status check failed, forcing logout, rid: %s", userName, rid)
+		// 清除会话
+		session.Clear()
+		if err := session.Save(); err != nil {
+			blog.Errorf("failed to clear session for disabled user %s, err: %s, rid: %s", userName, err.Error(), rid)
+		}
+		// 清除Cookie
+		c.SetCookie(common.BKUser, "", -1, "/", "", false, false)
+		c.SetCookie(common.HTTPCookieSupplierAccount, "", -1, "/", "", false, false)
+		c.SetCookie(common.HTTPCookieBKToken, "", -1, "/", "", false, false)
+		return user.LoginUser(c)
+	}
+
+	return true
+}
+
+// checkUserStatus 检查用户状态是否为active
+func checkUserStatus(c *gin.Context, userName string, apiCli apiserver.ApiServerClientInterface, rid string) bool {
+	// 构造请求头
+	requestHeader := make(http.Header)
+	for k, v := range c.Request.Header {
+		requestHeader[k] = v
+	}
+	requestHeader.Set("BK_User", userName)
+	requestHeader.Set("HTTP_BLUEKING_SUPPLIER_ID", common.BKDefaultOwnerID)
+
+	kit := rest.NewKitFromHeader(requestHeader, Engine.CCErr)
+
+	// 查询用户信息
+	userListRequest := &metadata.UserListRequest{
+		Search: userName, // 使用用户名搜索
+		Limit:  10,
+	}
+
+	userListResult, err := Engine.CoreAPI.CoreService().UserManagement().ListUsers(kit.Ctx, requestHeader, userListRequest)
+	if err != nil {
+		blog.Errorf("failed to query user status for %s, err: %v, rid: %s", userName, err, rid)
+		// 查询失败时，为了安全起见，认为用户无效
+		return false
+	}
+
+	// 查找匹配的用户
+	var userFound *metadata.User
+	if userListResult.Total > 0 && len(userListResult.Items) > 0 {
+		for _, u := range userListResult.Items {
+			// 支持邮箱和用户名匹配
+			if strings.EqualFold(u.Email, userName) || strings.EqualFold(u.UserID, userName) {
+				userFound = &u
+				break
+			}
+		}
+	}
+
+	if userFound == nil {
+		blog.Warnf("user %s not found in user management system, rid: %s", userName, rid)
+		return false
+	}
+
+	// 检查用户状态
+	if userFound.Status != metadata.UserStatusActive {
+		blog.Warnf("user %s status is %s, not active, rid: %s", userName, userFound.Status, rid)
+		return false
+	}
+
+	blog.V(5).Infof("user %s status check passed, status: %s, rid: %s", userName, userFound.Status, rid)
+	return true
 }
