@@ -160,7 +160,7 @@ func (s *Service) initService(ws *gin.Engine) {
 
 	ws.GET("/hosts/:bk_host_id/listen_ip_options", s.ListenIPOptions)
 	ws.POST("/logout", s.LogOutUser)
-	ws.GET("/login", s.Login)
+	// ws.GET("/login", s.Login)
 	ws.GET("/is_login", s.IsLogin)
 	ws.POST("/login", s.LoginUser)
 	ws.POST("/object/exportmany", s.BatchExportObject)
@@ -200,7 +200,7 @@ func (s *Service) initService(ws *gin.Engine) {
 
 	// user management api
 	s.InitUserManagement(ws)
-	
+
 	// common api
 	ws.GET("/healthz", s.Healthz)
 	ws.GET("/version", ginservice.Version)

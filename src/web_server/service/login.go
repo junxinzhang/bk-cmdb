@@ -35,9 +35,9 @@ func (s *Service) LogOutUser(c *gin.Context) {
 	session := sessions.Default(c)
 
 	// 检查是否是OIDC用户 - 通过检查oidc_username来判断
-	oidcUsername, isOIDCUser := session.Get("oidc_username").(string)
+	oidcUsername := session.Get("oidc_username").(string)
 
-	if isOIDCUser && oidcUsername != "" {
+	if oidcUsername != "" {
 		blog.Infof("OIDC user logout, clearing OIDC session, rid: %s", rid)
 
 		// 构建OIDC退出URL (在清除session之前)

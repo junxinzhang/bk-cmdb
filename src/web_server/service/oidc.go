@@ -28,6 +28,8 @@ import (
 	cc "configcenter/src/common/backbone/configcenter"
 	"configcenter/src/common/blog"
 	httpheader "configcenter/src/common/http/header"
+	"configcenter/src/common/http/rest"
+	"configcenter/src/common/metadata"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -193,15 +195,72 @@ func (s *Service) OIDCCallback(c *gin.Context) {
 	blog.Infof("OIDC user identified: %s, rid: %s", userName, rid)
 
 	// 验证用户是否在系统用户列表中
-	if !s.validateUserExists(userName, rid) {
-		blog.Warnf("OIDC user %s does not exist in system user list, rid: %s", userName, rid)
-		c.HTML(200, "login.html", gin.H{
-			"error": fmt.Sprintf("用户 %s 不存在于系统中，请联系管理员添加用户权限", userName),
-		})
+	//if !s.validateUserExists(userName, rid) {
+	//	blog.Warnf("OIDC user %s does not exist in system user list, rid: %s", userName, rid)
+	//	c.HTML(200, "login.html", gin.H{
+	//		"error": fmt.Sprintf("用户 %s 不存在于系统中，请联系管理员添加用户权限", userName),
+	//	})
+	//	return
+	//}
+
+	// 验证用户是否在 cc_user_management 表中存在且状态为活跃
+	//  // 用户认证头 - 解决API认证问题
+	//  'BK_User': getCurrentUser(),
+	//  // 供应商ID头 - 蓝鲸平台必需
+	//  'HTTP_BLUEKING_SUPPLIER_ID': '0'
+	// c.Request.Header 中手动封装 BK_User 和 HTTP_BLUEKING_SUPPLIER_ID
+	requestHeader := make(http.Header)
+	for k, v := range c.Request.Header {
+		requestHeader[k] = v
+	}
+	requestHeader.Set("BK_User", userName)
+	requestHeader.Set("HTTP_BLUEKING_SUPPLIER_ID", common.BKDefaultOwnerID)
+
+	kit := rest.NewKitFromHeader(requestHeader, s.Engine.CCErr)
+
+	// 使用 ListUsers 方法进行邮箱模糊查询
+	userListRequest := &metadata.UserListRequest{
+		Search: userName, // 邮箱搜索，后端会进行大小写不敏感的匹配
+		Limit:  10,       // 获取多个结果以便进行精确匹配
+	}
+
+	userListResult, err := s.CoreAPI.CoreService().UserManagement().ListUsers(kit.Ctx, requestHeader, userListRequest)
+	if err != nil {
+		blog.Errorf("failed to search user from cc_user_management, user: %s, err: %v, rid: %s", userName, err, rid)
+		s.renderOIDCErrorPage(c, "该用户不存在，请联系管理员")
 		return
 	}
 
-	blog.Infof("OIDC user %s validated successfully, rid: %s", userName, rid)
+	// 检查是否找到用户，并进行精确匹配
+	var user *metadata.User
+	if userListResult.Total > 0 && len(userListResult.Items) > 0 {
+		// 在返回的结果中查找精确匹配的邮箱
+		for _, u := range userListResult.Items {
+			if strings.EqualFold(u.Email, userName) { // 大小写不敏感比较
+				user = &u
+				break
+			}
+		}
+	}
+
+	if user == nil {
+		blog.Warnf("OIDC user %s not found in cc_user_management, rid: %s", userName, rid)
+		// 保存必要的OIDC信息以便logout时能正确清除SSO状态
+		s.saveBasicOIDCSession(c, token.IDToken, userName)
+		s.renderOIDCErrorPage(c, "该用户不存在，请联系管理员")
+		return
+	}
+
+	// 检查用户状态
+	if user.Status != metadata.UserStatusActive {
+		blog.Warnf("OIDC user %s exists but status is not active: %s, rid: %s", userName, user.Status, rid)
+		// 保存必要的OIDC信息以便logout时能正确清除SSO状态
+		s.saveBasicOIDCSession(c, token.IDToken, userName)
+		s.renderOIDCErrorPage(c, "该用户已经被禁用，请联系管理员")
+		return
+	}
+
+	blog.Infof("OIDC user %s validated successfully in cc_user_management, status: %s, rid: %s", userName, user.Status, rid)
 
 	// 生成一致的BkToken
 	expireTime := time.Now().Unix() + 24*60*60 // 24小时后过期
@@ -242,9 +301,7 @@ func (s *Service) OIDCCallback(c *gin.Context) {
 
 	if err := session.Save(); err != nil {
 		blog.Errorf("save OIDC session failed, err: %s, rid: %s", err.Error(), rid)
-		c.HTML(200, "login.html", gin.H{
-			"error": "会话保存失败，请重试",
-		})
+		s.renderOIDCErrorPage(c, "会话保存失败，请重试")
 		return
 	}
 
@@ -411,7 +468,78 @@ func (s *Service) validateUserExists(userName, rid string) bool {
 	return false
 }
 
-// generateBkToken 生成一致的BkToken
+// saveBasicOIDCSession 保存基本的OIDC会话信息，主要用于logout时能正确清除SSO状态
+func (s *Service) saveBasicOIDCSession(c *gin.Context, idToken, userName string) {
+	session := sessions.Default(c)
+
+	// 只保存logout时必需的最基本信息
+	session.Set("oidc_id_token", idToken)
+	session.Set("oidc_username", userName)
+
+	// 保存会话
+	if err := session.Save(); err != nil {
+		blog.Errorf("failed to save basic OIDC session for user %s, err: %s", userName, err.Error())
+	} else {
+		blog.Infof("saved basic OIDC session for user %s to enable proper logout", userName)
+	}
+}
+
+// renderOIDCErrorPage 渲染OIDC错误页面
+func (s *Service) renderOIDCErrorPage(c *gin.Context, errorMessage string) {
+	// 获取session以构造logout URL
+	session := sessions.Default(c)
+	idToken, _ := session.Get("oidc_id_token").(string)
+	
+	// 构造OIDC logout URL
+	logoutURL := s.Config.OIDC.LogoutUrl
+	if idToken != "" {
+		logoutURL = fmt.Sprintf("%s?id_token_hint=%s&post_logout_redirect_uri=%s", 
+			s.Config.OIDC.LogoutUrl, 
+			url.QueryEscape(idToken), 
+			url.QueryEscape(s.Config.OIDC.RedirectUri))
+	}
+	
+	c.Header("Content-Type", "text/html; charset=utf-8")
+	c.String(200, `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>登录失败</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+        .error { color: #ff4d4f; font-size: 16px; margin: 20px 0; }
+        .back { margin-top: 20px; }
+        .btn { 
+            display: inline-block;
+            padding: 8px 16px;
+            background-color: #1890ff;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn:hover { background-color: #40a9ff; }
+    </style>
+</head>
+<body>
+    <h2>登录失败</h2>
+    <div class="error">%s</div>
+    <div class="back">
+        <button class="btn" onclick="handleLogout()">返回登录页面</button>
+    </div>
+    <script>
+        function handleLogout() {
+            // 直接跳转到OIDC logout URL，清理SSO状态
+            window.location.href = '%s';
+        }
+    </script>
+</body>
+</html>`, errorMessage, logoutURL)
+}
+
 func generateBkToken(username string, expireTime int64) string {
 	// 使用用户名和过期时间生成一致的token
 	data := fmt.Sprintf("oidc:%s:%d", username, expireTime)
