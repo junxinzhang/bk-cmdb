@@ -77,6 +77,7 @@ type CreateUserRequest struct {
 
 // UpdateUserRequest 更新用户请求
 type UpdateUserRequest struct {
+	Email       *string           `json:"email,omitempty" validate:"omitempty,email"`
 	Name        *string           `json:"name,omitempty" validate:"omitempty,min=2,max=50"`
 	Role        *UserRole         `json:"role,omitempty"`
 	Permissions []string          `json:"permissions,omitempty"`

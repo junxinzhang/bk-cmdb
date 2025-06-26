@@ -43,7 +43,7 @@ func generateRandomString(length int) string {
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	source := rand.NewSource(time.Now().UnixNano())
 	r := rand.New(source)
-	
+
 	result := make([]byte, length)
 	for i := range result {
 		result[i] = charset[r.Intn(len(charset))]
@@ -60,22 +60,22 @@ type UserManagement interface {
 	GetUser(kit *rest.Kit, userID string) (*metadata.User, errors.CCErrorCoder)
 	ListUsers(kit *rest.Kit, params *metadata.UserListRequest) (*metadata.UserListResult, errors.CCErrorCoder)
 	BatchDeleteUsers(kit *rest.Kit, data *metadata.BatchDeleteUsersRequest) errors.CCErrorCoder
-	
+
 	// 用户状态管理
 	ToggleUserStatus(kit *rest.Kit, userID string, data *metadata.UserStatusRequest) (*metadata.User, errors.CCErrorCoder)
 	ResetUserPassword(kit *rest.Kit, userID string) (*metadata.ResetPasswordResult, errors.CCErrorCoder)
-	
+
 	// 用户统计和查询
 	GetUserStatistics(kit *rest.Kit) (*metadata.UserStatistics, errors.CCErrorCoder)
 	ValidateEmail(kit *rest.Kit, data *metadata.ValidateEmailRequest) (*metadata.ValidateEmailResult, errors.CCErrorCoder)
-	
+
 	// 角色权限管理
 	CreateRolePermission(kit *rest.Kit, data *metadata.CreateRolePermissionRequest) (*metadata.RolePermission, errors.CCErrorCoder)
 	UpdateRolePermission(kit *rest.Kit, roleID string, data *metadata.UpdateRolePermissionRequest) (*metadata.RolePermission, errors.CCErrorCoder)
 	DeleteRolePermission(kit *rest.Kit, roleID string) errors.CCErrorCoder
 	GetRolePermission(kit *rest.Kit, roleID string) (*metadata.RolePermission, errors.CCErrorCoder)
 	ListRolePermissions(kit *rest.Kit) ([]metadata.RolePermission, errors.CCErrorCoder)
-	
+
 	// 权限矩阵
 	GetPermissionMatrix(kit *rest.Kit) (*metadata.PermissionMatrix, errors.CCErrorCoder)
 	GetUserRoles(kit *rest.Kit, roleID string) ([]metadata.UserRoleInfo, errors.CCErrorCoder)
@@ -99,14 +99,14 @@ func (u *userManagement) CreateUser(kit *rest.Kit, data *metadata.CreateUserRequ
 	if err := u.validateCreateUserData(kit, data); err != nil {
 		return nil, err
 	}
-	
+
 	// 检查邮箱是否已存在
 	if exists, err := u.emailExists(kit, data.Email); err != nil {
 		return nil, err
 	} else if exists {
 		return nil, kit.CCError.CCErrorf(common.CCErrCommDuplicateItem, "email")
 	}
-	
+
 	// 创建用户对象
 	now := time.Now()
 	user := &metadata.User{
@@ -123,18 +123,18 @@ func (u *userManagement) CreateUser(kit *rest.Kit, data *metadata.CreateUserRequ
 		LoginCount:  0,
 		Metadata:    data.Metadata,
 	}
-	
+
 	// 设置默认状态
 	if user.Status == "" {
 		user.Status = metadata.UserStatusActive
 	}
-	
+
 	// 插入数据库
 	if err := u.db.Table(TableNameUser).Insert(kit.Ctx, user); err != nil {
 		blog.Errorf("create user failed, err: %v, user: %+v, rid: %s", err, user, kit.Rid)
 		return nil, kit.CCError.CCErrorf(common.CCErrCommDBInsertFailed)
 	}
-	
+
 	blog.Infof("create user success, user_id: %s, email: %s, rid: %s", user.UserID, user.Email, kit.Rid)
 	return user, nil
 }
@@ -146,9 +146,25 @@ func (u *userManagement) UpdateUser(kit *rest.Kit, userID string, data *metadata
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// 构建更新数据
 	updateData := make(mapstr.MapStr)
+	if data.Email != nil {
+		// 检查邮箱是否已存在（排除当前用户）
+		if exists, err := u.emailExists(kit, *data.Email); err != nil {
+			return nil, err
+		} else if exists {
+			// 检查是否是当前用户的邮箱
+			existingUser, err := u.getUserByEmail(kit, *data.Email)
+			if err != nil {
+				return nil, err
+			}
+			if existingUser.UserID != userID {
+				return nil, kit.CCError.CCErrorf(common.CCErrCommDuplicateItem, "email")
+			}
+		}
+		updateData["email"] = *data.Email
+	}
 	if data.Name != nil {
 		updateData["name"] = *data.Name
 	}
@@ -165,14 +181,14 @@ func (u *userManagement) UpdateUser(kit *rest.Kit, userID string, data *metadata
 		updateData["metadata"] = data.Metadata
 	}
 	updateData["updated_at"] = time.Now()
-	
+
 	// 更新数据库
 	condition := mapstr.MapStr{"user_id": userID}
 	if err := u.db.Table(TableNameUser).Update(kit.Ctx, condition, updateData); err != nil {
 		blog.Errorf("update user failed, err: %v, user_id: %s, rid: %s", err, userID, kit.Rid)
 		return nil, kit.CCError.CCErrorf(common.CCErrCommDBUpdateFailed)
 	}
-	
+
 	// 返回更新后的用户
 	return u.GetUser(kit, userID)
 }
@@ -183,14 +199,14 @@ func (u *userManagement) DeleteUser(kit *rest.Kit, userID string) errors.CCError
 	if _, err := u.GetUser(kit, userID); err != nil {
 		return err
 	}
-	
+
 	// 删除用户
 	condition := mapstr.MapStr{"user_id": userID}
 	if err := u.db.Table(TableNameUser).Delete(kit.Ctx, condition); err != nil {
 		blog.Errorf("delete user failed, err: %v, user_id: %s, rid: %s", err, userID, kit.Rid)
 		return kit.CCError.CCErrorf(common.CCErrCommDBDeleteFailed)
 	}
-	
+
 	blog.Infof("delete user success, user_id: %s, rid: %s", userID, kit.Rid)
 	return nil
 }
@@ -199,7 +215,7 @@ func (u *userManagement) DeleteUser(kit *rest.Kit, userID string) errors.CCError
 func (u *userManagement) GetUser(kit *rest.Kit, userID string) (*metadata.User, errors.CCErrorCoder) {
 	condition := mapstr.MapStr{"user_id": userID}
 	user := &metadata.User{}
-	
+
 	if err := u.db.Table(TableNameUser).Find(condition).One(kit.Ctx, user); err != nil {
 		if u.db.IsNotFoundError(err) {
 			return nil, kit.CCError.CCErrorf(common.CCErrCommNotFound, "user")
@@ -207,7 +223,7 @@ func (u *userManagement) GetUser(kit *rest.Kit, userID string) (*metadata.User, 
 		blog.Errorf("get user failed, err: %v, user_id: %s, rid: %s", err, userID, kit.Rid)
 		return nil, kit.CCError.CCErrorf(common.CCErrCommDBSelectFailed)
 	}
-	
+
 	return user, nil
 }
 
@@ -215,14 +231,14 @@ func (u *userManagement) GetUser(kit *rest.Kit, userID string) (*metadata.User, 
 func (u *userManagement) ListUsers(kit *rest.Kit, params *metadata.UserListRequest) (*metadata.UserListResult, errors.CCErrorCoder) {
 	// 构建查询条件
 	condition := u.buildUserListCondition(params)
-	
+
 	// 计算总数
 	total, err := u.db.Table(TableNameUser).Find(condition).Count(kit.Ctx)
 	if err != nil {
 		blog.Errorf("count users failed, err: %v, condition: %+v, rid: %s", err, condition, kit.Rid)
 		return nil, kit.CCError.CCErrorf(common.CCErrCommDBSelectFailed)
 	}
-	
+
 	// 设置分页参数
 	if params.Page <= 0 {
 		params.Page = 1
@@ -230,12 +246,12 @@ func (u *userManagement) ListUsers(kit *rest.Kit, params *metadata.UserListReque
 	if params.Limit <= 0 {
 		params.Limit = 20
 	}
-	
+
 	// 查询用户列表
 	users := make([]metadata.User, 0)
 	start := (params.Page - 1) * params.Limit
 	finder := u.db.Table(TableNameUser).Find(condition).Start(uint64(start)).Limit(uint64(params.Limit))
-	
+
 	// 排序
 	if params.SortField != "" {
 		sortOrder := 1
@@ -246,15 +262,15 @@ func (u *userManagement) ListUsers(kit *rest.Kit, params *metadata.UserListReque
 	} else {
 		finder = finder.Sort("created_at:-1")
 	}
-	
+
 	if err := finder.All(kit.Ctx, &users); err != nil {
 		blog.Errorf("list users failed, err: %v, condition: %+v, rid: %s", err, condition, kit.Rid)
 		return nil, kit.CCError.CCErrorf(common.CCErrCommDBSelectFailed)
 	}
-	
+
 	// 计算总页数
 	totalPages := int(math.Ceil(float64(total) / float64(params.Limit)))
-	
+
 	result := &metadata.UserListResult{
 		Items:      users,
 		Total:      int64(total),
@@ -262,7 +278,7 @@ func (u *userManagement) ListUsers(kit *rest.Kit, params *metadata.UserListReque
 		Limit:      params.Limit,
 		TotalPages: totalPages,
 	}
-	
+
 	return result, nil
 }
 
@@ -271,7 +287,7 @@ func (u *userManagement) BatchDeleteUsers(kit *rest.Kit, data *metadata.BatchDel
 	if len(data.UserIDs) == 0 {
 		return kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, "user_ids")
 	}
-	
+
 	// 检查用户是否存在
 	condition := mapstr.MapStr{"user_id": mapstr.MapStr{common.BKDBIN: data.UserIDs}}
 	count, err := u.db.Table(TableNameUser).Find(condition).Count(kit.Ctx)
@@ -279,17 +295,17 @@ func (u *userManagement) BatchDeleteUsers(kit *rest.Kit, data *metadata.BatchDel
 		blog.Errorf("count users failed, err: %v, user_ids: %v, rid: %s", err, data.UserIDs, kit.Rid)
 		return kit.CCError.CCErrorf(common.CCErrCommDBSelectFailed)
 	}
-	
+
 	if int(count) != len(data.UserIDs) {
 		return kit.CCError.CCErrorf(common.CCErrCommNotFound, "user")
 	}
-	
+
 	// 批量删除
 	if err := u.db.Table(TableNameUser).Delete(kit.Ctx, condition); err != nil {
 		blog.Errorf("batch delete users failed, err: %v, user_ids: %v, rid: %s", err, data.UserIDs, kit.Rid)
 		return kit.CCError.CCErrorf(common.CCErrCommDBDeleteFailed)
 	}
-	
+
 	blog.Infof("batch delete users success, user_ids: %v, rid: %s", data.UserIDs, kit.Rid)
 	return nil
 }
@@ -300,13 +316,13 @@ func (u *userManagement) ToggleUserStatus(kit *rest.Kit, userID string, data *me
 		"status":     data.Status,
 		"updated_at": time.Now(),
 	}
-	
+
 	condition := mapstr.MapStr{"user_id": userID}
 	if err := u.db.Table(TableNameUser).Update(kit.Ctx, condition, updateData); err != nil {
 		blog.Errorf("toggle user status failed, err: %v, user_id: %s, status: %s, rid: %s", err, userID, data.Status, kit.Rid)
 		return nil, kit.CCError.CCErrorf(common.CCErrCommDBUpdateFailed)
 	}
-	
+
 	return u.GetUser(kit, userID)
 }
 
@@ -316,19 +332,19 @@ func (u *userManagement) ResetUserPassword(kit *rest.Kit, userID string) (*metad
 	if _, err := u.GetUser(kit, userID); err != nil {
 		return nil, err
 	}
-	
+
 	// 生成临时密码
 	tempPassword := generateRandomString(12)
 	expiresAt := time.Now().Add(24 * time.Hour).Format("2006-01-02 15:04:05")
-	
+
 	// 这里应该集成实际的密码重置逻辑
 	// 例如发送邮件通知用户新密码
-	
+
 	result := &metadata.ResetPasswordResult{
 		TempPassword: tempPassword,
 		ExpiresAt:    expiresAt,
 	}
-	
+
 	blog.Infof("reset user password success, user_id: %s, rid: %s", userID, kit.Rid)
 	return result, nil
 }
@@ -340,17 +356,17 @@ func (u *userManagement) GetUserStatistics(kit *rest.Kit) (*metadata.UserStatist
 	if err != nil {
 		return nil, kit.CCError.CCErrorf(common.CCErrCommDBSelectFailed)
 	}
-	
+
 	// 按状态统计
 	activeCount, _ := u.db.Table(TableNameUser).Find(mapstr.MapStr{"status": metadata.UserStatusActive}).Count(kit.Ctx)
 	inactiveCount, _ := u.db.Table(TableNameUser).Find(mapstr.MapStr{"status": metadata.UserStatusInactive}).Count(kit.Ctx)
 	lockedCount, _ := u.db.Table(TableNameUser).Find(mapstr.MapStr{"status": metadata.UserStatusLocked}).Count(kit.Ctx)
-	
+
 	// 按角色统计
 	adminCount, _ := u.db.Table(TableNameUser).Find(mapstr.MapStr{"role": metadata.UserRoleAdmin}).Count(kit.Ctx)
 	operatorCount, _ := u.db.Table(TableNameUser).Find(mapstr.MapStr{"role": metadata.UserRoleOperator}).Count(kit.Ctx)
 	readonlyCount, _ := u.db.Table(TableNameUser).Find(mapstr.MapStr{"role": metadata.UserRoleReadonly}).Count(kit.Ctx)
-	
+
 	statistics := &metadata.UserStatistics{
 		TotalUsers:    int64(total),
 		ActiveUsers:   int64(activeCount),
@@ -360,7 +376,7 @@ func (u *userManagement) GetUserStatistics(kit *rest.Kit) (*metadata.UserStatist
 		OperatorUsers: int64(operatorCount),
 		ReadonlyUsers: int64(readonlyCount),
 	}
-	
+
 	return statistics, nil
 }
 
@@ -370,15 +386,15 @@ func (u *userManagement) ValidateEmail(kit *rest.Kit, data *metadata.ValidateEma
 	if err != nil {
 		return nil, err
 	}
-	
+
 	result := &metadata.ValidateEmailResult{
 		Available: !exists,
 	}
-	
+
 	if exists {
 		result.Message = "邮箱已被使用"
 	}
-	
+
 	return result, nil
 }
 
@@ -393,7 +409,7 @@ func (u *userManagement) CreateRolePermission(kit *rest.Kit, data *metadata.Crea
 	if count > 0 {
 		return nil, kit.CCError.CCErrorf(common.CCErrCommDuplicateItem, "role_name")
 	}
-	
+
 	now := time.Now()
 	role := &metadata.RolePermission{
 		ID:          primitive.NewObjectID().Hex(),
@@ -405,12 +421,12 @@ func (u *userManagement) CreateRolePermission(kit *rest.Kit, data *metadata.Crea
 		UpdatedAt:   now,
 		Metadata:    data.Metadata,
 	}
-	
+
 	if err := u.db.Table(TableNameRolePermission).Insert(kit.Ctx, role); err != nil {
 		blog.Errorf("create role permission failed, err: %v, role: %+v, rid: %s", err, role, kit.Rid)
 		return nil, kit.CCError.CCErrorf(common.CCErrCommDBInsertFailed)
 	}
-	
+
 	return role, nil
 }
 
@@ -427,12 +443,12 @@ func (u *userManagement) UpdateRolePermission(kit *rest.Kit, roleID string, data
 		updateData["metadata"] = data.Metadata
 	}
 	updateData["updated_at"] = time.Now()
-	
+
 	condition := mapstr.MapStr{"_id": roleID}
 	if err := u.db.Table(TableNameRolePermission).Update(kit.Ctx, condition, updateData); err != nil {
 		return nil, kit.CCError.CCErrorf(common.CCErrCommDBUpdateFailed)
 	}
-	
+
 	return u.GetRolePermission(kit, roleID)
 }
 
@@ -449,14 +465,14 @@ func (u *userManagement) DeleteRolePermission(kit *rest.Kit, roleID string) erro
 func (u *userManagement) GetRolePermission(kit *rest.Kit, roleID string) (*metadata.RolePermission, errors.CCErrorCoder) {
 	condition := mapstr.MapStr{"_id": roleID}
 	role := &metadata.RolePermission{}
-	
+
 	if err := u.db.Table(TableNameRolePermission).Find(condition).One(kit.Ctx, role); err != nil {
 		if u.db.IsNotFoundError(err) {
 			return nil, kit.CCError.CCErrorf(common.CCErrCommNotFound, "role")
 		}
 		return nil, kit.CCError.CCErrorf(common.CCErrCommDBSelectFailed)
 	}
-	
+
 	return role, nil
 }
 
@@ -486,12 +502,12 @@ func (u *userManagement) GetPermissionMatrix(kit *rest.Kit) (*metadata.Permissio
 			{ID: "readonly", Name: "只读用户", Description: "只读权限用户", IsSystem: true},
 		},
 		Matrix: [][]bool{
-			{true, true, true, true},   // admin
-			{false, true, false, true}, // operator
+			{true, true, true, true},    // admin
+			{false, true, false, true},  // operator
 			{false, false, false, true}, // readonly
 		},
 	}
-	
+
 	return matrix, nil
 }
 
@@ -499,11 +515,11 @@ func (u *userManagement) GetPermissionMatrix(kit *rest.Kit) (*metadata.Permissio
 func (u *userManagement) GetUserRoles(kit *rest.Kit, roleID string) ([]metadata.UserRoleInfo, errors.CCErrorCoder) {
 	condition := mapstr.MapStr{"role": roleID}
 	users := make([]metadata.User, 0)
-	
+
 	if err := u.db.Table(TableNameUser).Find(condition).All(kit.Ctx, &users); err != nil {
 		return nil, kit.CCError.CCErrorf(common.CCErrCommDBSelectFailed)
 	}
-	
+
 	userRoles := make([]metadata.UserRoleInfo, len(users))
 	for i, user := range users {
 		userRoles[i] = metadata.UserRoleInfo{
@@ -515,7 +531,7 @@ func (u *userManagement) GetUserRoles(kit *rest.Kit, roleID string) ([]metadata.
 			JoinDate: user.CreatedAt.Format("2006-01-02"),
 		}
 	}
-	
+
 	return userRoles, nil
 }
 
@@ -535,12 +551,27 @@ func (u *userManagement) validateCreateUserData(kit *rest.Kit, data *metadata.Cr
 }
 
 func (u *userManagement) emailExists(kit *rest.Kit, email string) (bool, errors.CCErrorCoder) {
-	condition := mapstr.MapStr{"email": email}
+	condition := mapstr.MapStr{"email": bson.M{common.BKDBLIKE: "^" + email + "$", common.BKDBOPTIONS: "i"}}
 	count, err := u.db.Table(TableNameUser).Find(condition).Count(kit.Ctx)
 	if err != nil {
 		return false, kit.CCError.CCErrorf(common.CCErrCommDBSelectFailed)
 	}
 	return count > 0, nil
+}
+
+func (u *userManagement) getUserByEmail(kit *rest.Kit, email string) (*metadata.User, errors.CCErrorCoder) {
+	condition := mapstr.MapStr{"email": bson.M{common.BKDBLIKE: "^" + email + "$", common.BKDBOPTIONS: "i"}}
+	user := &metadata.User{}
+
+	if err := u.db.Table(TableNameUser).Find(condition).One(kit.Ctx, user); err != nil {
+		if u.db.IsNotFoundError(err) {
+			return nil, kit.CCError.CCErrorf(common.CCErrCommNotFound, "user")
+		}
+		blog.Errorf("get user by email failed, err: %v, email: %s, rid: %s", err, email, kit.Rid)
+		return nil, kit.CCError.CCErrorf(common.CCErrCommDBSelectFailed)
+	}
+
+	return user, nil
 }
 
 func (u *userManagement) generateUserID(email string) string {
@@ -550,7 +581,7 @@ func (u *userManagement) generateUserID(email string) string {
 
 func (u *userManagement) buildUserListCondition(params *metadata.UserListRequest) mapstr.MapStr {
 	condition := make(mapstr.MapStr)
-	
+
 	// 关键字搜索
 	if params.Search != "" {
 		condition[common.BKDBOR] = []mapstr.MapStr{
@@ -558,16 +589,16 @@ func (u *userManagement) buildUserListCondition(params *metadata.UserListRequest
 			{"name": bson.M{common.BKDBLIKE: params.Search, common.BKDBOPTIONS: "i"}},
 		}
 	}
-	
+
 	// 角色过滤
 	if params.Role != "" {
 		condition["role"] = params.Role
 	}
-	
+
 	// 状态过滤
 	if params.Status != "" {
 		condition["status"] = params.Status
 	}
-	
+
 	return condition
 }
