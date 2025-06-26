@@ -122,18 +122,16 @@ func (s *Service) OIDCCallback(c *gin.Context) {
 	errorParam := c.Query("error")
 
 	if errorParam != "" {
-		blog.Errorf("OIDC callback error: %s, rid: %s", errorParam, rid)
-		c.HTML(200, "login.html", gin.H{
-			"error": fmt.Sprintf("Authentication failed: %s", errorParam),
-		})
+		msg := fmt.Sprintf("OIDC callback error: %s, rid: %s", errorParam, rid)
+		blog.Errorf(msg)
+		s.renderOIDCErrorPage(c, msg)
 		return
 	}
 
 	if code == "" {
-		blog.Errorf("OIDC authorization code is empty, rid: %s", rid)
-		c.HTML(200, "login.html", gin.H{
-			"error": "Authorization code is missing",
-		})
+		msg := fmt.Sprintf("OIDC authorization code is empty, rid: %s", rid)
+		blog.Errorf(msg)
+		s.renderOIDCErrorPage(c, msg)
 		return
 	}
 
@@ -141,20 +139,18 @@ func (s *Service) OIDCCallback(c *gin.Context) {
 	session := sessions.Default(c)
 	savedState, exists := session.Get("oidc_state").(string)
 	if !exists || savedState != state {
-		blog.Errorf("OIDC state mismatch, saved: %s, received: %s, rid: %s", savedState, state, rid)
-		c.HTML(200, "login.html", gin.H{
-			"error": "Invalid state parameter",
-		})
+		msg := fmt.Sprintf("OIDC state mismatch, saved: %s, received: %s, rid: %s", savedState, state, rid)
+		blog.Errorf(msg)
+		s.renderOIDCErrorPage(c, msg)
 		return
 	}
 
 	// 交换授权码获取令牌
 	token, err := s.exchangeCodeForToken(code, rid)
 	if err != nil {
-		blog.Errorf("exchange code for token failed, code: %s, err: %s, rid: %s", code[:10]+"...", err.Error(), rid)
-		c.HTML(200, "login.html", gin.H{
-			"error": "Failed to exchange authorization code for token. Please check SSO configuration.",
-		})
+		msg := fmt.Sprintf("exchange code for token failed, code: %s, err: %s, rid: %s", code[:10]+"...", err.Error(), rid)
+		blog.Errorf(msg)
+		s.renderOIDCErrorPage(c, msg)
 		return
 	}
 
@@ -165,9 +161,7 @@ func (s *Service) OIDCCallback(c *gin.Context) {
 	userInfo, err := s.fetchUserInfo(token.AccessToken, rid)
 	if err != nil {
 		blog.Errorf("fetch user info failed, err: %s, access_token: %s, rid: %s", err.Error(), token.AccessToken[:10]+"...", rid)
-		c.HTML(200, "login.html", gin.H{
-			"error": "Failed to fetch user information from SSO provider",
-		})
+		s.renderOIDCErrorPage(c, "Failed to fetch user information from SSO provider")
 		return
 	}
 
@@ -186,9 +180,7 @@ func (s *Service) OIDCCallback(c *gin.Context) {
 
 	if userName == "" {
 		blog.Errorf("cannot determine username from OIDC user info, rid: %s", rid)
-		c.HTML(200, "login.html", gin.H{
-			"error": "Cannot determine username from SSO response",
-		})
+		s.renderOIDCErrorPage(c, "Cannot determine username from SSO response")
 		return
 	}
 
@@ -245,8 +237,6 @@ func (s *Service) OIDCCallback(c *gin.Context) {
 
 	if user == nil {
 		blog.Warnf("OIDC user %s not found in cc_user_management, rid: %s", userName, rid)
-		// 保存必要的OIDC信息以便logout时能正确清除SSO状态
-		s.saveBasicOIDCSession(c, token.IDToken, userName)
 		s.renderOIDCErrorPage(c, "该用户不存在，请联系管理员")
 		return
 	}
@@ -254,8 +244,6 @@ func (s *Service) OIDCCallback(c *gin.Context) {
 	// 检查用户状态
 	if user.Status != metadata.UserStatusActive {
 		blog.Warnf("OIDC user %s exists but status is not active: %s, rid: %s", userName, user.Status, rid)
-		// 保存必要的OIDC信息以便logout时能正确清除SSO状态
-		s.saveBasicOIDCSession(c, token.IDToken, userName)
 		s.renderOIDCErrorPage(c, "该用户已经被禁用，请联系管理员")
 		return
 	}
