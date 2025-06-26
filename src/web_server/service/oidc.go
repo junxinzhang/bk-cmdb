@@ -489,52 +489,247 @@ func (s *Service) renderOIDCErrorPage(c *gin.Context, errorMessage string) {
 	// 获取session以构造logout URL
 	session := sessions.Default(c)
 	idToken, _ := session.Get("oidc_id_token").(string)
-	
+
 	// 构造OIDC logout URL
 	logoutURL := s.Config.OIDC.LogoutUrl
 	if idToken != "" {
-		logoutURL = fmt.Sprintf("%s?id_token_hint=%s&post_logout_redirect_uri=%s", 
-			s.Config.OIDC.LogoutUrl, 
-			url.QueryEscape(idToken), 
+		logoutURL = fmt.Sprintf("%s?id_token_hint=%s&post_logout_redirect_uri=%s",
+			s.Config.OIDC.LogoutUrl,
+			url.QueryEscape(idToken),
 			url.QueryEscape(s.Config.OIDC.RedirectUri))
 	}
-	
+
 	c.Header("Content-Type", "text/html; charset=utf-8")
 	c.String(200, `
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
     <meta charset="utf-8">
-    <title>登录失败</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>蓝鲸配置平台 - 登录失败</title>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
-        .error { color: #ff4d4f; font-size: 16px; margin: 20px 0; }
-        .back { margin-top: 20px; }
-        .btn { 
-            display: inline-block;
-            padding: 8px 16px;
-            background-color: #1890ff;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            padding: 60px 40px;
+            text-align: center;
+            max-width: 480px;
+            width: 90%%;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #ff6b6b, #feca57, #48cae4, #a8e6cf);
+        }
+        
+        .icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 30px;
+            background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
+            border-radius: 50%%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             color: white;
-            text-decoration: none;
-            border-radius: 4px;
+            font-size: 36px;
+        }
+        
+        h1 {
+            font-size: 28px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 16px;
+        }
+        
+        .error-message {
+            color: #e74c3c;
+            font-size: 16px;
+            line-height: 1.5;
+            margin: 24px 0 40px;
+            padding: 20px;
+            background: #fdf2f2;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            border-left: 4px solid #e74c3c;
+        }
+        
+        .buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 24px;
             border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
             cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 140px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #56ab2f, #a8e6cf);
+            color: white;
+        }
+        
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(86, 171, 47, 0.4);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .footer {
+            margin-top: 40px;
+            color: #7f8c8d;
             font-size: 14px;
         }
-        .btn:hover { background-color: #40a9ff; }
+        
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        
+        @media (max-width: 640px) {
+            .container {
+                padding: 40px 20px;
+                margin: 20px;
+            }
+            
+            .buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                width: 100%%;
+                max-width: 200px;
+            }
+        }
+        
+        /* 动画效果 */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .container {
+            animation: fadeInUp 0.6s ease-out;
+        }
     </style>
 </head>
 <body>
-    <h2>登录失败</h2>
-    <div class="error">%s</div>
-    <div class="back">
-        <button class="btn" onclick="handleLogout()">返回登录页面</button>
+    <div class="container">
+        <div class="icon">⚠️</div>
+        <h1>登录失败</h1>
+        <div class="error-message">%s</div>
+        <div class="buttons">
+            <button class="btn btn-primary" onclick="handleLogout()">
+                🔐 返回登录页面
+            </button>
+            <button class="btn btn-success" onclick="refreshPage()">
+                🔄 刷新页面
+            </button>
+        </div>
+        <div class="footer">
+            如有疑问，请联系系统管理员<br>
+            <a href="mailto:jason.zhang@frieslandcampina.com">jason.zhang@frieslandcampina.com</a>
+        </div>
     </div>
+    
     <script>
         function handleLogout() {
+            // 添加加载状态
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '⏳ 跳转中...';
+            btn.disabled = true;
+            
             // 直接跳转到OIDC logout URL，清理SSO状态
-            window.location.href = '%s';
+            setTimeout(() => {
+                window.location.href = '%s';
+            }, 500);
         }
+        
+        function refreshPage() {
+            // 添加加载状态
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '⏳ 刷新中...';
+            btn.disabled = true;
+            
+            // 跳转到首页
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 500);
+        }
+        
+        // 添加键盘快捷键支持
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                handleLogout();
+            } else if (e.key === 'F5' || (e.ctrlKey && e.key === 'r')) {
+                e.preventDefault();
+                refreshPage();
+            }
+        });
     </script>
 </body>
 </html>`, errorMessage, logoutURL)
