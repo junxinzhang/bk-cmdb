@@ -576,7 +576,7 @@ func (u *userManagement) getUserByEmail(kit *rest.Kit, email string) (*metadata.
 
 func (u *userManagement) generateUserID(email string) string {
 	// 简单的用户ID生成逻辑，实际项目中可能需要更复杂的算法
-	return email
+	return "uid-" + generateRandomString(6)
 }
 
 func (u *userManagement) buildUserListCondition(params *metadata.UserListRequest) mapstr.MapStr {
