@@ -444,7 +444,7 @@ func (u *userManagement) UpdateRolePermission(kit *rest.Kit, roleID string, data
 	}
 	updateData["updated_at"] = time.Now()
 
-	condition := mapstr.MapStr{"_id": roleID}
+	condition := mapstr.MapStr{"role_name": roleID}
 	if err := u.db.Table(TableNameRolePermission).Update(kit.Ctx, condition, updateData); err != nil {
 		return nil, kit.CCError.CCErrorf(common.CCErrCommDBUpdateFailed)
 	}
@@ -454,7 +454,7 @@ func (u *userManagement) UpdateRolePermission(kit *rest.Kit, roleID string, data
 
 // DeleteRolePermission 删除角色权限
 func (u *userManagement) DeleteRolePermission(kit *rest.Kit, roleID string) errors.CCErrorCoder {
-	condition := mapstr.MapStr{"_id": roleID}
+	condition := mapstr.MapStr{"role_name": roleID}
 	if err := u.db.Table(TableNameRolePermission).Delete(kit.Ctx, condition); err != nil {
 		return kit.CCError.CCErrorf(common.CCErrCommDBDeleteFailed)
 	}
@@ -463,7 +463,7 @@ func (u *userManagement) DeleteRolePermission(kit *rest.Kit, roleID string) erro
 
 // GetRolePermission 获取角色权限详情
 func (u *userManagement) GetRolePermission(kit *rest.Kit, roleID string) (*metadata.RolePermission, errors.CCErrorCoder) {
-	condition := mapstr.MapStr{"_id": roleID}
+	condition := mapstr.MapStr{"role_name": roleID}
 	role := &metadata.RolePermission{}
 
 	if err := u.db.Table(TableNameRolePermission).Find(condition).One(kit.Ctx, role); err != nil {
@@ -513,7 +513,7 @@ func (u *userManagement) GetPermissionMatrix(kit *rest.Kit) (*metadata.Permissio
 
 // GetUserRoles 获取角色下的用户列表
 func (u *userManagement) GetUserRoles(kit *rest.Kit, roleID string) ([]metadata.UserRoleInfo, errors.CCErrorCoder) {
-	condition := mapstr.MapStr{"role": roleID}
+	condition := mapstr.MapStr{"role_name": roleID}
 	users := make([]metadata.User, 0)
 
 	if err := u.db.Table(TableNameUser).Find(condition).All(kit.Ctx, &users); err != nil {
