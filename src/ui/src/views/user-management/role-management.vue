@@ -48,12 +48,6 @@
             编辑角色
           </bk-button>
           <bk-button
-            text
-            theme="primary"
-            @click.stop="editRolePermissions(role)">
-            编辑权限
-          </bk-button>
-          <bk-button
             v-if="!role.is_system"
             text
             theme="danger"
@@ -64,36 +58,6 @@
       </div>
     </div>
 
-    <!-- 权限编辑弹窗 -->
-    <bk-dialog
-      v-model="showPermissionDialog"
-      :title="`编辑 ${currentRoleName} 权限`"
-      :width="600"
-      @confirm="saveRolePermissions">
-      <div class="permission-editor">
-        <div class="permission-tip">
-          <bk-alert type="info">
-            <template slot="title">
-              管理员默认拥有所有权限，操作员可根据需要调整权限范围
-            </template>
-          </bk-alert>
-        </div>
-        <div class="permission-grid">
-          <div
-            v-for="permission in availablePermissions"
-            :key="permission.key"
-            class="permission-item">
-            <bk-checkbox
-              :value="editingPermissions.includes(permission.key)"
-              :disabled="isPermissionLocked(permission.key)"
-              @change="handlePermissionChange(permission.key, $event)">
-              {{ permission.label }}
-            </bk-checkbox>
-            <div class="permission-desc">{{ permission.description }}</div>
-          </div>
-        </div>
-      </div>
-    </bk-dialog>
 
     <!-- 角色创建/编辑弹窗 -->
     <role-form
@@ -118,45 +82,9 @@
     data() {
       return {
         selectedRole: 'admin',
-        showPermissionDialog: false,
         showRoleForm: false,
-        currentRoleName: '',
-        currentRoleKey: '',
         currentEditRole: null,
         isEditMode: false,
-        editingPermissions: [],
-        availablePermissions: [
-          {
-            key: 'home',
-            label: '首页',
-            description: '访问系统首页和概览信息'
-          },
-          {
-            key: 'business',
-            label: '业务',
-            description: '管理和查看业务拓扑、服务实例等'
-          },
-          {
-            key: 'resource',
-            label: '资源',
-            description: '管理主机、云区域等资源信息'
-          },
-          {
-            key: 'model',
-            label: '模型',
-            description: '管理配置模型、字段和关联关系'
-          },
-          {
-            key: 'operation',
-            label: '运营分析',
-            description: '查看运营数据和分析报告'
-          },
-          {
-            key: 'admin',
-            label: '平台管理',
-            description: '系统配置、用户管理等管理功能'
-          }
-        ]
       }
     },
     computed: {
@@ -207,12 +135,6 @@
         this.showRoleForm = true
       },
 
-      editRolePermissions(role) {
-        this.currentRoleKey = role.key || role.role_name
-        this.currentRoleName = role.role_name || role.name
-        this.editingPermissions = [...(role?.permissions || [])]
-        this.showPermissionDialog = true
-      },
 
       async deleteRole(role) {
         console.log('deleteRole 方法被调用，角色信息:', role)
@@ -245,58 +167,19 @@
         })
       },
 
-      async saveRolePermissions() {
-        try {
-          console.log('Saving role permissions:', {
-            roleKey: this.currentRoleKey,
-            permissions: this.editingPermissions
-          })
-          await this.updateRolePermissions({
-            roleKey: this.currentRoleKey,
-            permissions: this.editingPermissions
-          })
-          this.$bkMessage({
-            theme: 'success',
-            message: '权限更新成功'
-          })
-          this.showPermissionDialog = false
-          this.fetchRoles()
-        } catch (error) {
-          console.error('Permission update error:', error)
-          this.$bkMessage({
-            theme: 'error',
-            message: error.message || '权限更新失败'
-          })
-        }
-      },
-
-      getRoleNameByKey(key) {
-        const role = this.roles.find(r => (r.key || r.role_name) === key)
-        return role?.role_name || role?.name || key
-      },
 
       getPermissionLabel(permissionKey) {
-        const permission = this.availablePermissions.find(p => p.key === permissionKey)
+        // 保留这个方法，用于显示权限标签，但需要重新定义权限列表
+        const availablePermissions = [
+          { key: 'home', label: '首页' },
+          { key: 'business', label: '业务' },
+          { key: 'resource', label: '资源' },
+          { key: 'model', label: '模型' },
+          { key: 'operation', label: '运营分析' },
+          { key: 'admin', label: '平台管理' }
+        ]
+        const permission = availablePermissions.find(p => p.key === permissionKey)
         return permission?.label || permissionKey
-      },
-
-      isPermissionLocked(permissionKey) {
-        return this.currentRoleKey === 'admin' && permissionKey === 'admin'
-      },
-
-      handlePermissionChange(permissionKey, isChecked) {
-        if (isChecked) {
-          // 添加权限
-          if (!this.editingPermissions.includes(permissionKey)) {
-            this.editingPermissions.push(permissionKey)
-          }
-        } else {
-          // 移除权限
-          const index = this.editingPermissions.indexOf(permissionKey)
-          if (index > -1) {
-            this.editingPermissions.splice(index, 1)
-          }
-        }
       },
 
       handleRoleFormSuccess() {
@@ -406,27 +289,6 @@
     }
   }
 
-  .permission-editor {
-    .permission-tip {
-      margin-bottom: 20px;
-    }
-
-    .permission-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 16px;
-
-      .permission-item {
-        .permission-desc {
-          font-size: 12px;
-          color: #979ba5;
-          margin-top: 4px;
-          margin-left: 24px;
-          line-height: 1.4;
-        }
-      }
-    }
-  }
 
 }
 </style>
