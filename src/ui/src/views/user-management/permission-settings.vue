@@ -29,7 +29,7 @@
             <div class="permission-desc">{{ permission.description }}</div>
           </div>
         </div>
-        
+
         <div
           v-for="role in roles"
           :key="`${permission.key}-${role.key}`"
@@ -94,226 +94,224 @@
 </template>
 
 <script>
-import { mapState, mapActions } from 'vuex'
+  import { mapState, mapActions } from 'vuex'
 
-export default {
-  name: 'PermissionSettings',
-  data() {
-    return {
-      saving: false,
-      previewRole: 'admin',
-      permissions: [
-        {
-          key: 'home',
-          label: '首页',
-          description: '访问系统首页，查看系统概览和统计数据',
-          icon: 'bk-icon icon-home'
+  export default {
+    name: 'PermissionSettings',
+    data() {
+      return {
+        saving: false,
+        previewRole: 'admin',
+        permissions: [
+          {
+            key: 'home',
+            label: '首页',
+            description: '访问系统首页，查看系统概览和统计数据',
+            icon: 'bk-icon icon-home'
+          },
+          {
+            key: 'business',
+            label: '业务',
+            description: '管理业务拓扑、服务实例、进程配置等业务相关功能',
+            icon: 'bk-icon icon-apps'
+          },
+          {
+            key: 'resource',
+            label: '资源',
+            description: '管理主机资源、云区域配置、资源池等基础资源',
+            icon: 'bk-icon icon-host'
+          },
+          {
+            key: 'model',
+            label: '模型',
+            description: '管理配置模型、对象属性、模型关联等数据模型',
+            icon: 'bk-icon icon-cc-model'
+          },
+          {
+            key: 'operation',
+            label: '运营分析',
+            description: '查看运营数据分析、审计日志、系统监控等运营信息',
+            icon: 'bk-icon icon-bar-chart'
+          },
+          {
+            key: 'admin',
+            label: '平台管理',
+            description: '系统配置、用户管理、权限设置、全局配置等管理功能',
+            icon: 'bk-icon icon-cog'
+          }
+        ],
+        localPermissionMatrix: {}
+      }
+    },
+    computed: {
+      ...mapState('rolePermission', [
+        'roles',
+        'permissionMatrix'
+      ])
+    },
+    watch: {
+      permissionMatrix: {
+        handler(newMatrix) {
+          this.localPermissionMatrix = JSON.parse(JSON.stringify(newMatrix))
         },
-        {
-          key: 'business',
-          label: '业务',
-          description: '管理业务拓扑、服务实例、进程配置等业务相关功能',
-          icon: 'bk-icon icon-apps'
-        },
-        {
-          key: 'resource',
-          label: '资源',
-          description: '管理主机资源、云区域配置、资源池等基础资源',
-          icon: 'bk-icon icon-host'
-        },
-        {
-          key: 'model',
-          label: '模型',
-          description: '管理配置模型、对象属性、模型关联等数据模型',
-          icon: 'bk-icon icon-cc-model'
-        },
-        {
-          key: 'operation',
-          label: '运营分析',
-          description: '查看运营数据分析、审计日志、系统监控等运营信息',
-          icon: 'bk-icon icon-bar-chart'
-        },
-        {
-          key: 'admin',
-          label: '平台管理',
-          description: '系统配置、用户管理、权限设置、全局配置等管理功能',
-          icon: 'bk-icon icon-cog'
+        immediate: true,
+        deep: true
+      }
+    },
+    created() {
+      this.fetchPermissionMatrix()
+    },
+    methods: {
+      ...mapActions('rolePermission', [
+        'getPermissionMatrix',
+        'updatePermissionMatrix'
+      ]),
+
+      async fetchPermissionMatrix() {
+        try {
+          await this.getPermissionMatrix()
+        } catch (error) {
+          this.$bkMessage({
+            theme: 'error',
+            message: error.message || '获取权限矩阵失败'
+          })
         }
-      ],
-      localPermissionMatrix: {}
-    }
-  },
-  computed: {
-    ...mapState('rolePermission', [
-      'roles',
-      'permissionMatrix'
-    ])
-  },
-  watch: {
-    permissionMatrix: {
-      handler(newMatrix) {
-        this.localPermissionMatrix = JSON.parse(JSON.stringify(newMatrix))
       },
-      immediate: true,
-      deep: true
-    }
-  },
-  created() {
-    this.fetchPermissionMatrix()
-  },
-  methods: {
-    ...mapActions('rolePermission', [
-      'getPermissionMatrix',
-      'updatePermissionMatrix'
-    ]),
 
-    async fetchPermissionMatrix() {
-      try {
-        await this.getPermissionMatrix()
-      } catch (error) {
-        this.$bkMessage({
-          theme: 'error',
-          message: error.message || '获取权限矩阵失败'
-        })
-      }
-    },
+      hasPermission(roleKey, permissionKey) {
+        return this.localPermissionMatrix[roleKey]?.includes(permissionKey) || false
+      },
 
-    hasPermission(roleKey, permissionKey) {
-      return this.localPermissionMatrix[roleKey]?.includes(permissionKey) || false
-    },
-
-    togglePermission(roleKey, permissionKey, hasPermission) {
-      if (!this.localPermissionMatrix[roleKey]) {
-        this.$set(this.localPermissionMatrix, roleKey, [])
-      }
-      
-      const permissions = this.localPermissionMatrix[roleKey]
-      if (hasPermission) {
-        if (!permissions.includes(permissionKey)) {
-          permissions.push(permissionKey)
+      togglePermission(roleKey, permissionKey, hasPermission) {
+        if (!this.localPermissionMatrix[roleKey]) {
+          this.$set(this.localPermissionMatrix, roleKey, [])
         }
-      } else {
-        const index = permissions.indexOf(permissionKey)
-        if (index > -1) {
-          permissions.splice(index, 1)
+
+        const permissions = this.localPermissionMatrix[roleKey]
+        if (hasPermission) {
+          if (!permissions.includes(permissionKey)) {
+            permissions.push(permissionKey)
+          }
+        } else {
+          const index = permissions.indexOf(permissionKey)
+          if (index > -1) {
+            permissions.splice(index, 1)
+          }
         }
-      }
-    },
+      },
 
-    isPermissionLocked(roleKey, permissionKey) {
-      if (roleKey === 'admin') {
-        return true
-      }
-      return false
-    },
+      isPermissionLocked(roleKey, permissionKey) {
+        if (roleKey === 'admin') {
+          return true
+        }
+        return false
+      },
 
-    async savePermissions() {
-      this.saving = true
-      try {
-        await this.updatePermissionMatrix(this.localPermissionMatrix)
+      async savePermissions() {
+        this.saving = true
+        try {
+          await this.updatePermissionMatrix(this.localPermissionMatrix)
+          this.$bkMessage({
+            theme: 'success',
+            message: '权限设置保存成功'
+          })
+        } catch (error) {
+          this.$bkMessage({
+            theme: 'error',
+            message: error.message || '保存失败'
+          })
+        } finally {
+          this.saving = false
+        }
+      },
+
+      resetPermissions() {
+        this.localPermissionMatrix = JSON.parse(JSON.stringify(this.permissionMatrix))
         this.$bkMessage({
           theme: 'success',
-          message: '权限设置保存成功'
+          message: '已重置为原始设置'
         })
-      } catch (error) {
-        this.$bkMessage({
-          theme: 'error',
-          message: error.message || '保存失败'
-        })
-      } finally {
-        this.saving = false
+      },
+
+      getAccessibleMenus(roleKey) {
+        const rolePermissions = this.localPermissionMatrix[roleKey] || []
+        return this.permissions.filter(permission => rolePermissions.includes(permission.key))
       }
-    },
-
-    resetPermissions() {
-      this.localPermissionMatrix = JSON.parse(JSON.stringify(this.permissionMatrix))
-      this.$bkMessage({
-        theme: 'success',
-        message: '已重置为原始设置'
-      })
-    },
-
-    getAccessibleMenus(roleKey) {
-      const rolePermissions = this.localPermissionMatrix[roleKey] || []
-      return this.permissions.filter(permission => 
-        rolePermissions.includes(permission.key)
-      )
     }
   }
-}
 </script>
 
 <style lang="scss" scoped>
 .permission-settings {
   padding: 20px;
-  
+
   .settings-header {
     margin-bottom: 24px;
-    
+
     h3 {
       margin: 0 0 8px 0;
       font-size: 16px;
       color: #313238;
     }
-    
+
     .settings-desc {
       margin: 0;
       color: #979ba5;
       font-size: 12px;
     }
   }
-  
+
   .permission-matrix {
     background: #fff;
     border: 1px solid #dcdee5;
     border-radius: 2px;
     margin-bottom: 20px;
-    
+
     .matrix-header {
       display: grid;
       grid-template-columns: 300px repeat(auto-fit, 120px);
       background: #fafbfd;
       border-bottom: 1px solid #dcdee5;
-      
+
       .header-cell {
         padding: 16px;
         font-weight: 600;
         border-right: 1px solid #dcdee5;
-        
+
         &:last-child {
           border-right: none;
         }
-        
+
         &.role-header {
           text-align: center;
         }
       }
     }
-    
+
     .matrix-row {
       display: grid;
       grid-template-columns: 300px repeat(auto-fit, 120px);
       border-bottom: 1px solid #f0f1f5;
-      
+
       &:last-child {
         border-bottom: none;
       }
-      
+
       .matrix-cell {
         padding: 16px;
         border-right: 1px solid #f0f1f5;
-        
+
         &:last-child {
           border-right: none;
         }
-        
+
         &.checkbox-cell {
           display: flex;
           justify-content: center;
           align-items: center;
         }
       }
-      
+
       .permission-cell {
         .permission-info {
           .permission-name {
@@ -321,13 +319,13 @@ export default {
             align-items: center;
             font-weight: 500;
             margin-bottom: 4px;
-            
+
             .permission-icon {
               margin-right: 8px;
               color: #3a84ff;
             }
           }
-          
+
           .permission-desc {
             color: #979ba5;
             font-size: 12px;
@@ -337,62 +335,62 @@ export default {
       }
     }
   }
-  
+
   .settings-actions {
     margin-bottom: 32px;
-    
+
     .bk-button {
       margin-right: 8px;
     }
   }
-  
+
   .permission-preview {
     background: #fff;
     border: 1px solid #dcdee5;
     border-radius: 2px;
     padding: 20px;
-    
+
     h4 {
       margin: 0 0 16px 0;
       font-size: 14px;
       color: #313238;
     }
-    
+
     .preview-content {
       .preview-item {
         margin-bottom: 20px;
-        
+
         &:last-child {
           margin-bottom: 0;
         }
-        
+
         h5 {
           margin: 0 0 12px 0;
           font-size: 13px;
           color: #63656e;
         }
-        
+
         .menu-list {
           .menu-tag {
             margin-right: 8px;
             margin-bottom: 8px;
-            
+
             i {
               margin-right: 4px;
             }
           }
         }
-        
+
         .permission-descriptions {
           margin: 0;
           padding-left: 16px;
-          
+
           li {
             margin-bottom: 8px;
             font-size: 12px;
             color: #63656e;
             line-height: 1.5;
-            
+
             &:last-child {
               margin-bottom: 0;
             }

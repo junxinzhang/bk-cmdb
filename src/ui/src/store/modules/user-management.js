@@ -233,6 +233,7 @@ const actions = {
   async updateUser({ commit, dispatch }, { id, ...userData }) {
     commit('setLoading', { type: 'update', loading: true })
     try {
+      console.log('Update user request data:', userData)
       const response = await $http.put(`usermgmt/${id}`, userData)
       console.log('Update user response:', response)
       
@@ -276,6 +277,7 @@ const actions = {
   async editUser({ commit, dispatch }, { id, ...userData }) {
     commit('setLoading', { type: 'update', loading: true })
     try {
+      console.log('Edit user request data:', userData)
       const response = await $http.put(`usermgmt/${id}`, userData)
       
       // Handle CMDB API response format - try multiple possible response structures

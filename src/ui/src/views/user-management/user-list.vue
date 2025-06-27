@@ -36,19 +36,19 @@
       v-bkloading="{ isLoading: loading }"
       @page-change="handlePageChange"
       @page-limit-change="handlePageLimitChange">
-      
+
       <bk-table-column prop="email" label="邮箱" min-width="200">
         <template slot-scope="props">
           <span>{{ props.row.email }}</span>
         </template>
       </bk-table-column>
-      
+
       <bk-table-column prop="name" label="姓名" min-width="120">
         <template slot-scope="props">
           <span>{{ props.row.name }}</span>
         </template>
       </bk-table-column>
-      
+
       <bk-table-column prop="role" label="角色" min-width="100">
         <template slot-scope="props">
           <bk-tag :theme="getRoleTheme(props.row.role)">
@@ -56,7 +56,7 @@
           </bk-tag>
         </template>
       </bk-table-column>
-      
+
       <bk-table-column prop="status" label="状态" min-width="80">
         <template slot-scope="props">
           <bk-tag :theme="getStatusTheme(props.row.status)">
@@ -64,19 +64,19 @@
           </bk-tag>
         </template>
       </bk-table-column>
-      
+
       <bk-table-column prop="created_at" label="创建时间" min-width="160">
         <template slot-scope="props">
           <span>{{ formatDisplayTime(props.row.created_at) }}</span>
         </template>
       </bk-table-column>
-      
+
       <bk-table-column prop="last_login" label="最后登录" min-width="160">
         <template slot-scope="props">
           <span>{{ props.row.last_login ? formatDisplayTime(props.row.last_login) : '从未登录' }}</span>
         </template>
       </bk-table-column>
-      
+
       <bk-table-column label="操作" min-width="160" fixed="right">
         <template slot-scope="props">
           <bk-button
@@ -105,195 +105,195 @@
 </template>
 
 <script>
-import { mapState, mapActions } from 'vuex'
-import { formatTime } from '@/utils/tools'
+  import { mapState, mapActions } from 'vuex'
+  import { formatTime } from '@/utils/tools'
 
-export default {
-  name: 'UserList',
-  data() {
-    return {
-      searchKeyword: '',
-      selectedRole: '',
-      loading: false,
-      roleOptions: [
-        { value: 'admin', label: '管理员' },
-        { value: 'operator', label: '操作员' }
-      ]
-    }
-  },
-  computed: {
-    ...mapState('userManagement', [
-      'userList',
-      'pagination'
-    ])
-  },
-  created() {
-    this.fetchUsers()
-  },
-  methods: {
-    ...mapActions('userManagement', [
-      'getUserList',
-      'toggleUserStatus',
-      'disableUser',
-      'enableUser'
-    ]),
-
-    async fetchUsers() {
-      this.loading = true
-      try {
-        await this.getUserList({
-          page: this.pagination.current,
-          limit: this.pagination.limit,
-          search: this.searchKeyword,
-          role: this.selectedRole
-        })
-      } catch (error) {
-        this.$bkMessage({
-          theme: 'error',
-          message: error.message || '获取用户列表失败'
-        })
-      } finally {
-        this.loading = false
+  export default {
+    name: 'UserList',
+    data() {
+      return {
+        searchKeyword: '',
+        selectedRole: '',
+        loading: false,
+        roleOptions: [
+          { value: 'admin', label: '管理员' },
+          { value: 'operator', label: '操作员' }
+        ]
       }
     },
-
-    handleSearch() {
-      this.$store.commit('userManagement/updatePagination', {
-        current: 1
-      })
+    computed: {
+      ...mapState('userManagement', [
+        'userList',
+        'pagination'
+      ])
+    },
+    created() {
       this.fetchUsers()
     },
+    methods: {
+      ...mapActions('userManagement', [
+        'getUserList',
+        'toggleUserStatus',
+        'disableUser',
+        'enableUser'
+      ]),
 
-    handlePageChange(page) {
-      this.$store.commit('userManagement/updatePagination', {
-        current: page
-      })
-      this.fetchUsers()
-    },
-
-    handlePageLimitChange(limit) {
-      this.$store.commit('userManagement/updatePagination', {
-        current: 1,
-        limit
-      })
-      this.fetchUsers()
-    },
-
-    handleEdit(user) {
-      this.$emit('edit', user)
-    },
-
-    handleDelete(user) {
-      this.$emit('delete', user)
-    },
-
-    async handleToggleStatus(user) {
-      // 检查用户是否被锁定
-      if (user.status === 'locked') {
-        this.$bkMessage({
-          theme: 'warning',
-          message: '无法操作已锁定的用户'
-        })
-        return
-      }
-      
-      try {
-        const userId = user._id || user.id || user.user_id
-        const isActive = user.status === 'active'
-        
-        if (isActive) {
-          // 禁用用户
-          await this.disableUser(userId)
-          this.$bkMessage({
-            theme: 'success',
-            message: '用户已禁用'
+      async fetchUsers() {
+        this.loading = true
+        try {
+          await this.getUserList({
+            page: this.pagination.current,
+            limit: this.pagination.limit,
+            search: this.searchKeyword,
+            role: this.selectedRole
           })
-        } else {
-          // 启用用户
-          await this.enableUser(userId)
+        } catch (error) {
           this.$bkMessage({
-            theme: 'success',
-            message: '用户已启用'
+            theme: 'error',
+            message: error.message || '获取用户列表失败'
+          })
+        } finally {
+          this.loading = false
+        }
+      },
+
+      handleSearch() {
+        this.$store.commit('userManagement/updatePagination', {
+          current: 1
+        })
+        this.fetchUsers()
+      },
+
+      handlePageChange(page) {
+        this.$store.commit('userManagement/updatePagination', {
+          current: page
+        })
+        this.fetchUsers()
+      },
+
+      handlePageLimitChange(limit) {
+        this.$store.commit('userManagement/updatePagination', {
+          current: 1,
+          limit
+        })
+        this.fetchUsers()
+      },
+
+      handleEdit(user) {
+        this.$emit('edit', user)
+      },
+
+      handleDelete(user) {
+        this.$emit('delete', user)
+      },
+
+      async handleToggleStatus(user) {
+        // 检查用户是否被锁定
+        if (user.status === 'locked') {
+          this.$bkMessage({
+            theme: 'warning',
+            message: '无法操作已锁定的用户'
+          })
+          return
+        }
+
+        try {
+          const userId = user._id || user.id || user.user_id
+          const isActive = user.status === 'active'
+
+          if (isActive) {
+            // 禁用用户
+            await this.disableUser(userId)
+            this.$bkMessage({
+              theme: 'success',
+              message: '用户已禁用'
+            })
+          } else {
+            // 启用用户
+            await this.enableUser(userId)
+            this.$bkMessage({
+              theme: 'success',
+              message: '用户已启用'
+            })
+          }
+
+          // 刷新用户列表以显示最新状态
+          this.fetchUsers()
+        } catch (error) {
+          console.error('Toggle user status error:', error)
+          this.$bkMessage({
+            theme: 'error',
+            message: error.message || '操作失败'
           })
         }
-        
-        // 刷新用户列表以显示最新状态
-        this.fetchUsers()
-      } catch (error) {
-        console.error('Toggle user status error:', error)
-        this.$bkMessage({
-          theme: 'error',
-          message: error.message || '操作失败'
-        })
+      },
+
+      getRoleTheme(role) {
+        return role === 'admin' ? 'danger' : 'info'
+      },
+
+      getRoleLabel(role) {
+        const roleMap = {
+          admin: '管理员',
+          operator: '操作员'
+        }
+        return roleMap[role] || role
+      },
+
+      getStatusTheme(status) {
+        const statusThemeMap = {
+          active: 'success',
+          inactive: 'danger',
+          locked: 'warning'
+        }
+        return statusThemeMap[status] || 'danger'
+      },
+
+      getStatusLabel(status) {
+        const statusLabelMap = {
+          active: '启用',
+          inactive: '禁用',
+          locked: '锁定'
+        }
+        return statusLabelMap[status] || '未知'
+      },
+
+      getToggleButtonTheme(status) {
+        if (status === 'active') return 'warning'
+        if (status === 'inactive') return 'success'
+        if (status === 'locked') return 'default'
+        return 'default'
+      },
+
+      getToggleButtonLabel(status) {
+        if (status === 'active') return '禁用'
+        if (status === 'inactive') return '启用'
+        if (status === 'locked') return '已锁定'
+        return '操作'
+      },
+
+      formatDisplayTime(timestamp) {
+        return formatTime(timestamp, 'YYYY-MM-DD HH:mm:ss')
       }
-    },
-
-    getRoleTheme(role) {
-      return role === 'admin' ? 'danger' : 'info'
-    },
-
-    getRoleLabel(role) {
-      const roleMap = {
-        admin: '管理员',
-        operator: '操作员'
-      }
-      return roleMap[role] || role
-    },
-
-    getStatusTheme(status) {
-      const statusThemeMap = {
-        active: 'success',
-        inactive: 'danger',
-        locked: 'warning'
-      }
-      return statusThemeMap[status] || 'danger'
-    },
-
-    getStatusLabel(status) {
-      const statusLabelMap = {
-        active: '启用',
-        inactive: '禁用',
-        locked: '锁定'
-      }
-      return statusLabelMap[status] || '未知'
-    },
-
-    getToggleButtonTheme(status) {
-      if (status === 'active') return 'warning'
-      if (status === 'inactive') return 'success'
-      if (status === 'locked') return 'default'
-      return 'default'
-    },
-
-    getToggleButtonLabel(status) {
-      if (status === 'active') return '禁用'
-      if (status === 'inactive') return '启用'
-      if (status === 'locked') return '已锁定'
-      return '操作'
-    },
-
-    formatDisplayTime(timestamp) {
-      return formatTime(timestamp, 'YYYY-MM-DD HH:mm:ss')
     }
   }
-}
 </script>
 
 <style lang="scss" scoped>
 .user-list {
   padding: 20px;
-  
+
   .list-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 16px;
-    
+
     .search-area {
       display: flex;
       align-items: center;
     }
-    
+
     .filter-area {
       display: flex;
       align-items: center;

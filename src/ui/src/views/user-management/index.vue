@@ -9,13 +9,13 @@
         新增用户
       </bk-button>
     </div>
-    
+
     <div class="content">
       <bk-tab
         :active.sync="activeTab"
         type="unborder-card">
         <bk-tab-panel name="users" label="用户列表">
-          <user-list 
+          <user-list
             ref="userList"
             @edit="handleEditUser"
             @delete="handleDeleteUser" />
@@ -43,111 +43,111 @@
 </template>
 
 <script>
-import UserList from './user-list.vue'
-import UserForm from './user-form.vue'
-import RoleManagement from './role-management.vue'
-import { mapActions } from 'vuex'
+  import UserList from './user-list.vue'
+  import UserForm from './user-form.vue'
+  import RoleManagement from './role-management.vue'
+  import { mapActions } from 'vuex'
 
-export default {
-  name: 'UserManagement',
-  components: {
-    UserList,
-    UserForm,
-    RoleManagement
-  },
-  data() {
-    return {
-      activeTab: 'users',
-      showUserDialog: false,
-      isEditMode: false,
-      currentUser: null
-    }
-  },
-  methods: {
-    ...mapActions('userManagement', [
-      'createUser',
-      'updateUser',
-      'deleteUser'
-    ]),
-
-    handleCreateUser() {
-      this.isEditMode = false
-      this.currentUser = null
-      this.showUserDialog = true
+  export default {
+    name: 'UserManagement',
+    components: {
+      UserList,
+      UserForm,
+      RoleManagement
     },
-
-    handleEditUser(user) {
-      this.isEditMode = true
-      this.currentUser = { ...user }
-      this.showUserDialog = true
-    },
-
-    async handleDeleteUser(user) {
-      try {
-        await this.$bkInfo({
-          title: '确认删除',
-          subTitle: `确定要删除用户 ${user.name} 吗？`,
-          confirmFn: async () => {
-            await this.deleteUser(user._id || user.id || user.user_id)
-            this.$bkMessage({
-              theme: 'success',
-              message: '删除成功'
-            })
-            this.$refs.userList.fetchUsers()
-          }
-        })
-      } catch (error) {
-        this.$bkMessage({
-          theme: 'error',
-          message: error.message || '删除失败'
-        })
+    data() {
+      return {
+        activeTab: 'users',
+        showUserDialog: false,
+        isEditMode: false,
+        currentUser: null
       }
     },
+    methods: {
+      ...mapActions('userManagement', [
+        'createUser',
+        'updateUser',
+        'deleteUser'
+      ]),
 
-    async handleConfirmUser() {
-      try {
-        const formData = await this.$refs.userForm.validate()
-        if (this.isEditMode) {
-          await this.updateUser({ id: this.currentUser._id || this.currentUser.id || this.currentUser.user_id, ...formData })
-          this.$bkMessage({
-            theme: 'success',
-            message: '更新成功'
+      handleCreateUser() {
+        this.isEditMode = false
+        this.currentUser = null
+        this.showUserDialog = true
+      },
+
+      handleEditUser(user) {
+        this.isEditMode = true
+        this.currentUser = { ...user }
+        this.showUserDialog = true
+      },
+
+      async handleDeleteUser(user) {
+        try {
+          await this.$bkInfo({
+            title: '确认删除',
+            subTitle: `确定要删除用户 ${user.name} 吗？`,
+            confirmFn: async () => {
+              await this.deleteUser(user._id || user.id || user.user_id)
+              this.$bkMessage({
+                theme: 'success',
+                message: '删除成功'
+              })
+              this.$refs.userList.fetchUsers()
+            }
           })
-        } else {
-          await this.createUser(formData)
+        } catch (error) {
           this.$bkMessage({
-            theme: 'success',
-            message: '创建成功'
+            theme: 'error',
+            message: error.message || '删除失败'
           })
         }
-        this.showUserDialog = false
-        this.$refs.userList.fetchUsers()
-      } catch (error) {
-        this.$bkMessage({
-          theme: 'error',
-          message: error.message || '操作失败'
-        })
-      }
-    },
+      },
 
-    handleCancelUser() {
-      this.showUserDialog = false
-      this.currentUser = null
+      async handleConfirmUser() {
+        try {
+          const formData = await this.$refs.userForm.validate()
+          if (this.isEditMode) {
+            await this.updateUser({ id: this.currentUser._id || this.currentUser.id || this.currentUser.user_id, ...formData })
+            this.$bkMessage({
+              theme: 'success',
+              message: '更新成功'
+            })
+          } else {
+            await this.createUser(formData)
+            this.$bkMessage({
+              theme: 'success',
+              message: '创建成功'
+            })
+          }
+          this.showUserDialog = false
+          this.$refs.userList.fetchUsers()
+        } catch (error) {
+          this.$bkMessage({
+            theme: 'error',
+            message: error.message || '操作失败'
+          })
+        }
+      },
+
+      handleCancelUser() {
+        this.showUserDialog = false
+        this.currentUser = null
+      }
     }
   }
-}
 </script>
 
 <style lang="scss" scoped>
 .user-management {
   padding: 20px;
-  
+
   .header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 20px;
-    
+
     h2 {
       margin: 0;
       color: #313238;
@@ -155,7 +155,7 @@ export default {
       font-weight: 600;
     }
   }
-  
+
   .content {
     background: #fff;
     border-radius: 2px;
