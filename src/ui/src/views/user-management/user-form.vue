@@ -22,13 +22,12 @@
 
       <bk-form-item label="角色" property="role" required>
         <bk-radio-group v-model="formData.role">
-          <bk-radio value="admin">
-            <span>管理员</span>
-            <div class="role-desc">拥有所有权限，可以管理用户和系统配置</div>
-          </bk-radio>
-          <bk-radio value="operator">
-            <span>操作员</span>
-            <div class="role-desc">拥有基本操作权限，可以查看和操作业务数据</div>
+          <bk-radio 
+            v-for="role in availableRoles" 
+            :key="role.key" 
+            :value="role.key">
+            <span>{{ role.name }}</span>
+            <div class="role-desc">{{ role.description }}</div>
           </bk-radio>
         </bk-radio-group>
       </bk-form-item>
@@ -62,6 +61,8 @@
 </template>
 
 <script>
+  import { mapState, mapActions } from 'vuex'
+
   export default {
     name: 'UserForm',
     props: {
@@ -151,6 +152,18 @@
         }
       }
     },
+    computed: {
+      ...mapState('rolePermission', [
+        'roles'
+      ]),
+      availableRoles() {
+        return this.roles.map(role => ({
+          key: role.key || role.role_name,
+          name: role.name || role.role_name,
+          description: role.description || '暂无描述'
+        }))
+      }
+    },
     watch: {
       userData: {
         handler(newVal) {
@@ -180,7 +193,13 @@
         }
       }
     },
+    created() {
+      this.fetchRoles()
+    },
     methods: {
+      ...mapActions('rolePermission', [
+        'getRoles'
+      ]),
       validate() {
         return new Promise((resolve, reject) => {
           this.$refs.userForm.validate((valid) => {
@@ -196,6 +215,14 @@
             }
           })
         })
+      },
+
+      async fetchRoles() {
+        try {
+          await this.getRoles()
+        } catch (error) {
+          console.error('获取角色列表失败:', error)
+        }
       },
 
       resetForm() {

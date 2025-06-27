@@ -114,21 +114,27 @@
       return {
         searchKeyword: '',
         selectedRole: '',
-        loading: false,
-        roleOptions: [
-          { value: 'admin', label: '管理员' },
-          { value: 'operator', label: '操作员' }
-        ]
+        loading: false
       }
     },
     computed: {
       ...mapState('userManagement', [
         'userList',
         'pagination'
-      ])
+      ]),
+      ...mapState('rolePermission', [
+        'roles'
+      ]),
+      roleOptions() {
+        return this.roles.map(role => ({
+          value: role.key || role.role_name,
+          label: role.name || role.role_name
+        }))
+      }
     },
     created() {
       this.fetchUsers()
+      this.fetchRoles()
     },
     methods: {
       ...mapActions('userManagement', [
@@ -137,10 +143,19 @@
         'disableUser',
         'enableUser'
       ]),
+      ...mapActions('rolePermission', [
+        'getRoles'
+      ]),
 
       async fetchUsers() {
         this.loading = true
         try {
+          // 确保store中的searchFilters是最新的
+          this.$store.commit('userManagement/updateSearchFilters', {
+            keyword: this.searchKeyword,
+            role: this.selectedRole
+          })
+          
           await this.getUserList({
             page: this.pagination.current,
             limit: this.pagination.limit,
@@ -157,11 +172,33 @@
         }
       },
 
+      async fetchRoles() {
+        try {
+          await this.getRoles()
+        } catch (error) {
+          console.error('获取角色列表失败:', error)
+        }
+      },
+
       handleSearch() {
+        this.$store.commit('userManagement/updateSearchFilters', {
+          keyword: this.searchKeyword,
+          role: this.selectedRole
+        })
         this.$store.commit('userManagement/updatePagination', {
           current: 1
         })
         this.fetchUsers()
+      },
+
+      handleRoleChange() {
+        this.handleSearch()
+      },
+
+      handleClear() {
+        this.searchKeyword = ''
+        this.selectedRole = ''
+        this.handleSearch()
       },
 
       handlePageChange(page) {
