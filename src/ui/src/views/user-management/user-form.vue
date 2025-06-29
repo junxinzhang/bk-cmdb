@@ -22,9 +22,9 @@
 
       <bk-form-item label="角色" property="role" required>
         <bk-radio-group v-model="formData.role">
-          <bk-radio 
-            v-for="role in availableRoles" 
-            :key="role.key" 
+          <bk-radio
+            v-for="role in availableRoles"
+            :key="role.key"
             :value="role.key">
             <span>{{ role.name }}</span>
             <div class="role-desc">{{ role.description }}</div>
@@ -160,7 +160,8 @@
         return this.roles.map(role => ({
           key: role.key || role.role_name,
           name: role.name || role.role_name,
-          description: role.description || '暂无描述'
+          description: role.description || '暂无描述',
+          permissions: role.permissions || []
         }))
       }
     },
@@ -173,12 +174,12 @@
             if (!Array.isArray(permissions)) {
               permissions = []
             }
-            
+
             this.formData = {
               email: newVal.email || '',
               name: newVal.name || '',
               role: newVal.role || '',
-              permissions: permissions,
+              permissions,
               status: newVal.status || 'active'
             }
           } else {
@@ -238,17 +239,36 @@
         })
       },
 
-      setDefaultPermissions(role) {
+      setDefaultPermissions(roleKey) {
         // 确保 permissions 始终是数组
         if (!Array.isArray(this.formData.permissions)) {
           this.formData.permissions = []
         }
+        // 从 availableRoles 中找到对应的角色
+        const selectedRole = this.availableRoles.find(role => role.key === roleKey || role.name === roleKey)
         
-        if (role === 'admin') {
-          this.formData.permissions = this.availablePermissions.map(p => p.key)
-        } else if (role === 'operator') {
-          this.formData.permissions = ['home', 'business', 'resource']
+        console.log('Setting permissions for role:', roleKey)
+        console.log('Available roles:', this.availableRoles)
+        console.log('Selected role:', selectedRole)
+
+        if (selectedRole && selectedRole.permissions) {
+          // 使用从 API 返回的权限数据
+          console.log('Using permissions from API:', selectedRole.permissions)
+          this.formData.permissions = [...selectedRole.permissions]
+        } else {
+          // 如果没有找到角色或权限数据，使用默认配置作为兜底
+          console.log('Using fallback permissions for role:', roleKey)
+          if (roleKey === 'admin' || roleKey === '管理员') {
+            this.formData.permissions = this.availablePermissions.map(p => p.key)
+          } else if (roleKey === 'operator' || roleKey === '操作员') {
+            this.formData.permissions = ['home', 'business', 'resource']
+          } else {
+            // 其他角色默认只有基础权限
+            this.formData.permissions = ['home']
+          }
         }
+        
+        console.log('Final permissions set:', this.formData.permissions)
       },
 
       isPermissionDisabled(permissionKey) {
