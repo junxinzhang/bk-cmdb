@@ -35,7 +35,7 @@
       <div class="menu-list" v-scroll="{
         targetClass: 'active'
       }">
-        <template v-for="(menu, index) in currentMenus">
+        <template v-for="(menu, index) in visibleMenus">
           <router-link
             :key="index"
             tag="a"
@@ -80,8 +80,10 @@
     MENU_RESOURCE_INSTANCE
   } from '@/dictionary/menu-symbol'
   import { BUILTIN_MODEL_RESOURCE_MENUS } from '@/dictionary/model-constants.js'
+  import { permissionMixin } from '@/utils/permission'
 
   export default {
+    mixins: [permissionMixin],
     data() {
       return {
         routerLinkHeight: 42,
@@ -148,6 +150,19 @@
           menus.splice(1, 0, ...this.collectionMenus)
         }
         return menus
+      },
+      visibleMenus() {
+        return this.currentMenus.filter(menu => {
+          // 检查菜单是否有权限显示
+          if (typeof menu.visibility === 'function') {
+            return menu.visibility()
+          }
+          if (typeof menu.visibility === 'boolean') {
+            return menu.visibility
+          }
+          // 默认显示
+          return true
+        })
       },
       relativeActiveName() {
         const relative = this.$tools.getValue(this.$route, 'meta.menu.relative')

@@ -14,6 +14,7 @@ package service
 
 import (
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -22,6 +23,7 @@ import (
 	cc "configcenter/src/common/backbone/configcenter"
 	"configcenter/src/common/blog"
 	httpheader "configcenter/src/common/http/header"
+	"configcenter/src/common/http/rest"
 	"configcenter/src/common/metadata"
 	"configcenter/src/web_server/middleware/user"
 
@@ -77,10 +79,12 @@ func (s *Service) IsLogin(c *gin.Context) {
 	user := user.NewUser(*s.Config, s.Engine, s.CacheCli, s.ApiCli)
 	isLogin := user.LoginUser(c)
 	if isLogin {
+		// 获取用户权限
+		permissions := s.getUserPermissions(c)
 		c.JSON(200, gin.H{
 			common.HTTPBKAPIErrorCode:    0,
 			common.HTTPBKAPIErrorMessage: nil,
-			"permission":                 nil,
+			"permission":                 permissions,
 			"result":                     true,
 		})
 		return
@@ -150,6 +154,109 @@ func (s *Service) LoginUser(c *gin.Context) {
 		"error": defErr.CCError(common.CCErrWebUsernamePasswdWrong).Error(),
 	})
 	return
+}
+
+// getUserPermissions 获取用户权限
+func (s *Service) getUserPermissions(c *gin.Context) []string {
+	rid := httpheader.GetRid(c.Request.Header)
+	
+	// 从cookie中获取用户名
+	cookieUser, err := c.Cookie(common.BKUser)
+	if err != nil || cookieUser == "" {
+		blog.Warnf("Failed to get user from cookie, rid: %s", rid)
+		return []string{}
+	}
+	
+	// 尝试从用户管理服务获取用户权限
+	userInfo, err := s.getUserFromDatabase(c, cookieUser, rid)
+	if err != nil {
+		blog.Warnf("Failed to get user from database, user: %s, err: %v, fallback to default permissions, rid: %s", 
+			cookieUser, err, rid)
+		return s.getDefaultPermissionsByRole(cookieUser)
+	}
+	
+	if userInfo == nil {
+		blog.Warnf("User not found in database, user: %s, fallback to default permissions, rid: %s", cookieUser, rid)
+		return s.getDefaultPermissionsByRole(cookieUser)
+	}
+	
+	// 如果用户权限为空，使用默认权限
+	if len(userInfo.Permissions) == 0 {
+		blog.Infof("User permissions is empty, user: %s, using default permissions, rid: %s", cookieUser, rid)
+		return s.getDefaultPermissionsByRole(cookieUser)
+	}
+	
+	// 返回用户的权限列表
+	blog.V(4).Infof("Get user permissions from database, user: %s, permissions: %v, rid: %s", 
+		cookieUser, userInfo.Permissions, rid)
+	return userInfo.Permissions
+}
+
+// getUserFromDatabase 从cc_user_management表中获取用户信息
+func (s *Service) getUserFromDatabase(c *gin.Context, username string, rid string) (*metadata.User, error) {
+	// 构建请求头
+	requestHeader := make(http.Header)
+	for k, v := range c.Request.Header {
+		requestHeader[k] = v
+	}
+	requestHeader.Set("BK_User", username)
+	requestHeader.Set("HTTP_BLUEKING_SUPPLIER_ID", common.BKDefaultOwnerID)
+
+	kit := rest.NewKitFromHeader(requestHeader, s.Engine.CCErr)
+
+	// 尝试直接通过用户ID获取用户信息
+	userInfo, err := s.Engine.CoreAPI.CoreService().UserManagement().GetUser(kit.Ctx, requestHeader, username)
+	if err == nil && userInfo != nil {
+		return userInfo, nil
+	}
+
+	// 如果直接获取失败，尝试通过列表查询
+	userListRequest := &metadata.UserListRequest{
+		Search: username, // 按用户名或邮箱搜索
+		Limit:  10,       // 获取多个结果以便进行精确匹配
+	}
+
+	userListResult, err := s.Engine.CoreAPI.CoreService().UserManagement().ListUsers(kit.Ctx, requestHeader, userListRequest)
+	if err != nil {
+		blog.Errorf("failed to search user from cc_user_management, user: %s, err: %v, rid: %s", username, err, rid)
+		return nil, err
+	}
+
+	// 检查是否找到用户，并进行精确匹配
+	if userListResult != nil && userListResult.Total > 0 && len(userListResult.Items) > 0 {
+		// 在返回的结果中查找精确匹配的用户名或邮箱
+		for _, u := range userListResult.Items {
+			if u.UserID == username || strings.EqualFold(u.Email, username) {
+				return &u, nil
+			}
+		}
+	}
+
+	// 没有找到用户
+	blog.V(4).Infof("user not found in cc_user_management, user: %s, rid: %s", username, rid)
+	return nil, nil
+}
+
+// getDefaultPermissionsByRole 根据用户角色返回默认权限
+func (s *Service) getDefaultPermissionsByRole(username string) []string {
+	// 根据用户名判断权限
+	// 管理员用户返回所有权限
+	if username == "admin" || username == "Administrator" || username == "root" {
+		return []string{"admin", "home", "business", "model", "resource", "operation"}
+	}
+	
+	// 查看是否是运维用户 (常见的运维账号名模式)
+	if strings.Contains(strings.ToLower(username), "ops") || strings.Contains(strings.ToLower(username), "operator") {
+		return []string{"home", "business", "resource", "operation"}
+	}
+	
+	// 查看是否是开发用户 (常见的开发账号名模式)
+	if strings.Contains(strings.ToLower(username), "dev") || strings.Contains(strings.ToLower(username), "developer") {
+		return []string{"home", "business", "model", "resource"}
+	}
+	
+	// 默认用户返回基础权限（首页、业务、资源）
+	return []string{"home", "business", "resource"}
 }
 
 // buildOIDCLogoutURL 构建OIDC退出登录URL

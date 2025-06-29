@@ -28,6 +28,7 @@ import cmdbSearchComponent from './components/search/index'
 import routerActions from './router/actions'
 import tools from './utils/tools'
 import { gotoLoginPage } from '@/utils/login-helper'
+import { initializeApp } from '@/utils/app-init'
 import clipboard from 'vue-clipboard2'
 import './magicbox'
 import './directives'
@@ -50,7 +51,10 @@ Vue.prototype.$http = api
 Vue.prototype.$tools = tools
 Vue.prototype.$routerActions = routerActions
 
-api.get(`${window.API_HOST}is_login`).then(() => {
+api.get(`${window.API_HOST}is_login`).then(async () => {
+  // 初始化应用和权限管理
+  await initializeApp(Vue)
+  
   window.CMDB_APP = new Vue({
     el: '#app',
     router,
