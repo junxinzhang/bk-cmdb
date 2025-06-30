@@ -46,7 +46,7 @@ const dev = {
     HELP_DOC_URL: JSON.stringify(''),
     DISABLE_OPERATION_STATISTIC: false,
     COOKIE_DOMAIN: JSON.stringify(''),
-    COMPONENT_API_URL: JSON.stringify(''),
+    COMPONENT_API_URL: JSON.stringify(process.env.COMPONENT_API_URL || ''),
     PUBLIC_PATH: JSON.stringify('/'),
     ENABLE_NOTIFICATION: JSON.stringify(false),
     BK_REPO_URL: JSON.stringify(''),

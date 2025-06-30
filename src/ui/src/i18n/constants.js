@@ -29,6 +29,7 @@ export const LANG_SET = Object.freeze([
   {
     id: LANG_KEYS.EN,
     name: 'English',
+    apiLocale: 'en',
     icon: 'english'
   }
 ])

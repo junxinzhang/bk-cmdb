@@ -23,8 +23,40 @@ Vue.use(VueI18n)
 const siteConfig = useSiteConfig()
 
 const langInCookie = Cookies.get(LANG_COOKIE_NAME)
-const matchedLang = LANG_SET.find(lang => lang.id === langInCookie || lang?.alias?.includes(langInCookie))
+console.log('Language in cookie:', langInCookie)
+console.log('Available languages:', LANG_SET)
+console.log('All cookies:', document.cookie)
+
+const matchedLang = LANG_SET.find(lang => {
+  // Try to match both id and apiLocale values
+  const idMatch = lang.id === langInCookie
+  const apiLocaleMatch = lang.apiLocale === langInCookie
+  const aliasMatch = lang.alias?.includes(langInCookie)
+  console.log(`Checking ${lang.id}: idMatch=${idMatch}, apiLocaleMatch=${apiLocaleMatch}, aliasMatch=${aliasMatch}`)
+  return idMatch || apiLocaleMatch || aliasMatch
+})
+
+console.log('Matched language:', matchedLang)
 const locale = matchedLang?.id || LANG_KEYS.ZH_CN
+console.log('Final locale:', locale)
+
+// If no cookie was found, set the default language cookie
+if (!langInCookie) {
+  console.log('No language cookie found, setting default to:', locale)
+  const defaultCookieValue = LANG_SET.find(lang => lang.id === locale)?.apiLocale || locale
+  try {
+    Cookies.set(LANG_COOKIE_NAME, defaultCookieValue, {
+      expires: 366,
+      path: '/',
+      sameSite: 'Lax'
+    })
+    // Also set via document.cookie as backup
+    document.cookie = `${LANG_COOKIE_NAME}=${defaultCookieValue}; path=/; max-age=${366 * 24 * 60 * 60}; SameSite=Lax`
+    console.log('Default language cookie set to:', defaultCookieValue)
+  } catch (e) {
+    console.warn('Failed to set default language cookie:', e)
+  }
+}
 
 const i18n = new VueI18n({
   locale,
@@ -38,23 +70,78 @@ const i18n = new VueI18n({
 })
 
 export const changeLocale = async (locale) => {
-  Cookies.remove(LANG_COOKIE_NAME, { path: '' })
+  console.log('Changing locale to:', locale)
+  
   const cookieValue = LANG_SET.find(lang => lang.id === locale)?.apiLocale || locale
-  Cookies.set(LANG_COOKIE_NAME, cookieValue, {
+  console.log('Setting cookie value:', cookieValue)
+  
+  // Update the i18n locale immediately
+  i18n.locale = locale
+  console.log('Updated i18n locale to:', i18n.locale)
+  
+  // Set cookie with simple, reliable options for localhost
+  const cookieOptions = {
     expires: 366,
-    domain: siteConfig?.cookieDomain || window.location.hostname.replace(/^.*(\.[^.]+\.[^.]+)$/, '$1'),
-  })
-
+    path: '/',
+    sameSite: 'Lax'
+  }
+  
+  console.log('Cookie options:', cookieOptions)
+  
+  // Remove existing cookies first
+  try {
+    Cookies.remove(LANG_COOKIE_NAME)
+    Cookies.remove(LANG_COOKIE_NAME, { path: '/' })
+    Cookies.remove(LANG_COOKIE_NAME, { path: '' })
+  } catch (e) {
+    console.warn('Error removing old cookies:', e)
+  }
+  
+  // Set the new cookie
+  Cookies.set(LANG_COOKIE_NAME, cookieValue, cookieOptions)
+  
+  // Verify the cookie was set
+  const verifyValue = Cookies.get(LANG_COOKIE_NAME)
+  console.log('Cookie verification - set value:', cookieValue, 'read value:', verifyValue)
+  
+  // Also try to set via document.cookie as backup
+  document.cookie = `${LANG_COOKIE_NAME}=${cookieValue}; path=/; max-age=${366 * 24 * 60 * 60}; SameSite=Lax`
+  
   if (siteConfig?.componentApiUrl) {
     const url = `${siteConfig.componentApiUrl}/api/c/compapi/v2/usermanage/fe_update_user_language/`
+    console.log('Calling language sync API:', url)
     try {
       await jsonp(url, { language: cookieValue })
-    } finally {
-      window.location.reload()
+      console.log('Language sync API call successful')
+    } catch (error) {
+      console.warn('Failed to sync language preference with backend:', error)
+    }
+  } else {
+    console.log('componentApiUrl not configured, skipping backend language sync')
+    console.log('siteConfig:', siteConfig)
+  }
+  
+  // Wait and verify cookie is set before reloading
+  let retryCount = 0
+  const maxRetries = 10
+  
+  const verifyCookieAndReload = () => {
+    const currentCookie = Cookies.get(LANG_COOKIE_NAME)
+    console.log(`Cookie verification attempt ${retryCount + 1}: expecting "${cookieValue}", got "${currentCookie}"`)
+    
+    if (currentCookie === cookieValue || retryCount >= maxRetries) {
+      console.log('Cookie verified, reloading page...')
+      // Force a hard reload to avoid any caching issues
+      window.location.reload(true)
+    } else {
+      retryCount++
+      // Try setting the cookie again
+      document.cookie = `${LANG_COOKIE_NAME}=${cookieValue}; path=/; max-age=${366 * 24 * 60 * 60}; SameSite=Lax`
+      setTimeout(verifyCookieAndReload, 50)
     }
   }
-
-  window.location.reload()
+  
+  setTimeout(verifyCookieAndReload, 100)
 }
 
 export const language = locale
