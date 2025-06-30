@@ -21,7 +21,7 @@ import (
 // CCTag show the git tag for this version
 // CCBuildTime show the compile time
 var (
-	CCVersion       = "17.03.28"
+	CCVersion       = "17.03.28 Power By Jason"
 	CCTag           = "2017-03-28 Release"
 	CCBRANCH        = ""
 	CCBuildTime     = "2017-03-28 19:50:00"

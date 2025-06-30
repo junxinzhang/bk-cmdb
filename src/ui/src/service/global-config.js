@@ -36,11 +36,12 @@ export const initialConfig = {
   publicConfig: {
     name: '配置平台',
     nameEn: 'CMDB',
-    productName: '蓝鲸配置平台',
+    productName: 'RFC China CMDB 配置平台',
     productNameEn: 'BK CMDB',
     brandName: '蓝鲸智云',
     brandNameEn: 'Tencent BlueKing',
-    favicon: '/static/favicon.ico',
+    favicon: '/static/rfc_logo256.png',
+    appLogo: '/static/rfc_logo256.png',
     version: window.Site.buildVersion
   }
 }
