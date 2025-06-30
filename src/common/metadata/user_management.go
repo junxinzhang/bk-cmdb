@@ -82,6 +82,8 @@ type UpdateUserRequest struct {
 	Role        *UserRole         `json:"role,omitempty"`
 	Permissions []string          `json:"permissions,omitempty"`
 	Status      *UserStatus       `json:"status,omitempty"`
+	LastLogin   *time.Time        `json:"last_login,omitempty"`
+	LoginCount  *int64            `json:"login_count,omitempty"`
 	Metadata    mapstr.MapStr     `json:"metadata,omitempty"`
 }
 

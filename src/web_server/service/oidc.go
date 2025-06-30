@@ -216,7 +216,7 @@ func (s *Service) OIDCCallback(c *gin.Context) {
 		Limit:  10,       // 获取多个结果以便进行精确匹配
 	}
 
-	userListResult, err := s.CoreAPI.CoreService().UserManagement().ListUsers(kit.Ctx, requestHeader, userListRequest)
+	userListResult, err := s.Engine.CoreAPI.CoreService().UserManagement().ListUsers(kit.Ctx, requestHeader, userListRequest)
 	if err != nil {
 		blog.Errorf("failed to search user from cc_user_management, user: %s, err: %v, rid: %s", userName, err, rid)
 		s.renderOIDCErrorPage(c, "该用户不存在，请联系管理员")
@@ -248,7 +248,37 @@ func (s *Service) OIDCCallback(c *gin.Context) {
 		return
 	}
 
-	blog.Infof("OIDC user %s validated successfully in cc_user_management, status: %s, rid: %s", userName, user.Status, rid)
+	blog.Infof("OIDC user %s validated successfully in cc_user_management, status: %s, user_id: %s, current login_count: %d, rid: %s", 
+		userName, user.Status, user.UserID, user.LoginCount, rid)
+
+	// 更新用户登录记录
+	now := time.Now()
+	newLoginCount := user.LoginCount + 1
+
+	blog.Infof("attempting to update login record for OIDC user %s, current login_count: %d, new login_count: %d, rid: %s", 
+		userName, user.LoginCount, newLoginCount, rid)
+
+	// 构建更新请求，只更新登录相关字段
+	updateUserRequest := &metadata.UpdateUserRequest{
+		LastLogin:  &now,
+		LoginCount: &newLoginCount,
+	}
+
+	updateUserKit := rest.NewKitFromHeader(requestHeader, s.Engine.CCErr)
+	blog.V(3).Infof("calling UpdateUser API with user_id: %s, rid: %s", user.UserID, rid)
+	
+	updatedUser, err := s.Engine.CoreAPI.CoreService().UserManagement().UpdateUser(updateUserKit.Ctx, requestHeader, user.UserID, updateUserRequest)
+	if err != nil {
+		// 如果更新用户记录失败，记录日志但不阻止登录流程
+		blog.Errorf("failed to update user login record for OIDC user %s, user_id: %s, err: %v, rid: %s", userName, user.UserID, err, rid)
+	} else {
+		blog.Infof("successfully updated login record for OIDC user %s (user_id: %s), login_count: %d, last_login: %v, rid: %s", 
+			userName, user.UserID, newLoginCount, now, rid)
+		if updatedUser != nil {
+			blog.V(3).Infof("updated user object: login_count=%d, last_login=%v, rid: %s", 
+				updatedUser.LoginCount, updatedUser.LastLogin, rid)
+		}
+	}
 
 	// 生成一致的BkToken
 	expireTime := time.Now().Unix() + 24*60*60 // 24小时后过期

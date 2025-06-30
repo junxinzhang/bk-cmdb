@@ -168,6 +168,8 @@ func initWebService(webSvr *WebServer, engine *backbone.Engine) (*websvc.Service
 		service.ApiCli = engine.CoreAPI.ApiServer()
 	}
 	service.Logics.ApiCli = service.ApiCli
+	// Add CoreAPI alias for compatibility with user_management.go
+	service.Logics.CoreAPI = engine.CoreAPI
 
 	return service, nil
 }

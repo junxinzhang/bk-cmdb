@@ -177,6 +177,12 @@ func (u *userManagement) UpdateUser(kit *rest.Kit, userID string, data *metadata
 	if data.Status != nil {
 		updateData["status"] = *data.Status
 	}
+	if data.LastLogin != nil {
+		updateData["last_login"] = *data.LastLogin
+	}
+	if data.LoginCount != nil {
+		updateData["login_count"] = *data.LoginCount
+	}
 	if data.Metadata != nil {
 		updateData["metadata"] = data.Metadata
 	}
