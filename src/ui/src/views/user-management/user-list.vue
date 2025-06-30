@@ -4,19 +4,19 @@
       <div class="search-area">
         <bk-input
           v-model="searchKeyword"
-          placeholder="请输入用户姓名或邮箱搜索"
+          :placeholder="$t('请输入用户姓名或邮箱搜索')"
           :clearable="true"
           :right-icon="'bk-icon icon-search'"
           style="width: 300px;"
           @enter="handleSearch"
           @clear="handleSearch">
         </bk-input>
-        <bk-button @click="handleSearch" style="margin-left: 8px;">搜索</bk-button>
+        <bk-button @click="handleSearch" style="margin-left: 8px;">{{ $t('搜索') }}</bk-button>
       </div>
       <div class="filter-area">
         <bk-select
           v-model="selectedRole"
-          placeholder="选择角色"
+          :placeholder="$t('请选择角色')"
           :clearable="true"
           style="width: 120px;"
           @change="handleSearch">
@@ -37,19 +37,19 @@
       @page-change="handlePageChange"
       @page-limit-change="handlePageLimitChange">
 
-      <bk-table-column prop="email" label="邮箱" min-width="200">
+      <bk-table-column prop="email" :label="$t('邮箱')" min-width="200">
         <template slot-scope="props">
           <span>{{ props.row.email }}</span>
         </template>
       </bk-table-column>
 
-      <bk-table-column prop="name" label="姓名" min-width="120">
+      <bk-table-column prop="name" :label="$t('姓名')" min-width="120">
         <template slot-scope="props">
           <span>{{ props.row.name }}</span>
         </template>
       </bk-table-column>
 
-      <bk-table-column prop="role" label="角色" min-width="100">
+      <bk-table-column prop="role" :label="$t('角色')" min-width="100">
         <template slot-scope="props">
           <bk-tag :theme="getRoleTheme(props.row.role)">
             {{ getRoleLabel(props.row.role) }}
@@ -57,7 +57,7 @@
         </template>
       </bk-table-column>
 
-      <bk-table-column prop="status" label="状态" min-width="80">
+      <bk-table-column prop="status" :label="$t('状态')" min-width="80">
         <template slot-scope="props">
           <bk-tag :theme="getStatusTheme(props.row.status)">
             {{ getStatusLabel(props.row.status) }}
@@ -65,25 +65,25 @@
         </template>
       </bk-table-column>
 
-      <bk-table-column prop="created_at" label="创建时间" min-width="160">
+      <bk-table-column prop="created_at" :label="$t('创建时间')" min-width="160">
         <template slot-scope="props">
           <span>{{ formatDisplayTime(props.row.created_at) }}</span>
         </template>
       </bk-table-column>
 
-      <bk-table-column prop="last_login" label="最后登录" min-width="160">
+      <bk-table-column prop="last_login" :label="$t('最后登录')" min-width="160">
         <template slot-scope="props">
-          <span>{{ props.row.last_login ? formatDisplayTime(props.row.last_login) : '从未登录' }}</span>
+          <span>{{ props.row.last_login ? formatDisplayTime(props.row.last_login) : $t('从未登录') }}</span>
         </template>
       </bk-table-column>
 
-      <bk-table-column label="操作" min-width="160" fixed="right">
+      <bk-table-column :label="$t('操作')" min-width="160" fixed="right">
         <template slot-scope="props">
           <bk-button
             text
             theme="primary"
             @click="handleEdit(props.row)">
-            编辑
+            {{ $t('编辑用户') }}
           </bk-button>
           <bk-button
             text
@@ -96,7 +96,7 @@
             text
             theme="danger"
             @click="handleDelete(props.row)">
-            删除
+            {{ $t('删除用户') }}
           </bk-button>
         </template>
       </bk-table-column>
@@ -165,7 +165,7 @@
         } catch (error) {
           this.$bkMessage({
             theme: 'error',
-            message: error.message || '获取用户列表失败'
+            message: error.message || this.$t('获取用户列表失败')
           })
         } finally {
           this.loading = false
@@ -176,7 +176,7 @@
         try {
           await this.getRoles()
         } catch (error) {
-          console.error('获取角色列表失败:', error)
+          console.error(this.$t('获取角色列表失败') + ':', error)
         }
       },
 
@@ -229,7 +229,7 @@
         if (user.status === 'locked') {
           this.$bkMessage({
             theme: 'warning',
-            message: '无法操作已锁定的用户'
+            message: this.$t('无法操作已锁定的用户')
           })
           return
         }
@@ -243,14 +243,14 @@
             await this.disableUser(userId)
             this.$bkMessage({
               theme: 'success',
-              message: '用户已禁用'
+              message: this.$t('用户已禁用')
             })
           } else {
             // 启用用户
             await this.enableUser(userId)
             this.$bkMessage({
               theme: 'success',
-              message: '用户已启用'
+              message: this.$t('用户已启用')
             })
           }
 
@@ -260,7 +260,7 @@
           console.error('Toggle user status error:', error)
           this.$bkMessage({
             theme: 'error',
-            message: error.message || '操作失败'
+            message: error.message || this.$t('操作失败')
           })
         }
       },
@@ -271,8 +271,8 @@
 
       getRoleLabel(role) {
         const roleMap = {
-          admin: '管理员',
-          operator: '操作员'
+          admin: this.$t('管理员'),
+          operator: this.$t('操作员')
         }
         return roleMap[role] || role
       },
@@ -288,11 +288,11 @@
 
       getStatusLabel(status) {
         const statusLabelMap = {
-          active: '启用',
-          inactive: '禁用',
-          locked: '锁定'
+          active: this.$t('启用'),
+          inactive: this.$t('禁用'),
+          locked: this.$t('已锁定')
         }
-        return statusLabelMap[status] || '未知'
+        return statusLabelMap[status] || this.$t('未知')
       },
 
       getToggleButtonTheme(status) {
@@ -303,10 +303,10 @@
       },
 
       getToggleButtonLabel(status) {
-        if (status === 'active') return '禁用'
-        if (status === 'inactive') return '启用'
-        if (status === 'locked') return '已锁定'
-        return '操作'
+        if (status === 'active') return this.$t('禁用')
+        if (status === 'inactive') return this.$t('启用')
+        if (status === 'locked') return this.$t('已锁定')
+        return this.$t('操作')
       },
 
       formatDisplayTime(timestamp) {

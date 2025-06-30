@@ -6,21 +6,21 @@
       :model="formData"
       :rules="rules">
 
-      <bk-form-item label="邮箱" property="email" required>
+      <bk-form-item :label="$t('邮箱')" property="email" required>
         <bk-input
           v-model="formData.email"
-          placeholder="请输入用户邮箱">
+          :placeholder="$t('请输入邮箱')">
         </bk-input>
       </bk-form-item>
 
-      <bk-form-item label="姓名" property="name" required>
+      <bk-form-item :label="$t('姓名')" property="name" required>
         <bk-input
           v-model="formData.name"
-          placeholder="请输入用户姓名">
+          :placeholder="$t('请输入姓名')">
         </bk-input>
       </bk-form-item>
 
-      <bk-form-item label="角色" property="role" required>
+      <bk-form-item :label="$t('角色')" property="role" required>
         <bk-radio-group v-model="formData.role">
           <bk-radio
             v-for="role in availableRoles"
@@ -32,7 +32,7 @@
         </bk-radio-group>
       </bk-form-item>
 
-      <bk-form-item label="权限设置" v-if="formData.role">
+      <bk-form-item :label="$t('权限设置')" v-if="formData.role">
         <div class="permission-grid">
           <div
             v-for="permission in availablePermissions"
@@ -49,10 +49,10 @@
         </div>
       </bk-form-item>
 
-      <bk-form-item label="状态" property="status" v-if="isEdit">
+      <bk-form-item :label="$t('状态')" property="status" v-if="isEdit">
         <bk-radio-group v-model="formData.status">
-          <bk-radio value="active">启用</bk-radio>
-          <bk-radio value="inactive">禁用</bk-radio>
+          <bk-radio value="active">{{ $t('启用') }}</bk-radio>
+          <bk-radio value="inactive">{{ $t('禁用') }}</bk-radio>
         </bk-radio-group>
       </bk-form-item>
 
@@ -83,72 +83,6 @@
           role: '',
           permissions: [],
           status: 'active'
-        },
-        availablePermissions: [
-          {
-            key: 'home',
-            label: '首页',
-            description: '访问系统首页和概览信息'
-          },
-          {
-            key: 'business',
-            label: '业务',
-            description: '管理和查看业务拓扑、服务实例等'
-          },
-          {
-            key: 'resource',
-            label: '资源',
-            description: '管理主机、云区域等资源信息'
-          },
-          {
-            key: 'model',
-            label: '模型',
-            description: '管理配置模型、字段和关联关系'
-          },
-          {
-            key: 'operation',
-            label: '运营分析',
-            description: '查看运营数据和分析报告'
-          },
-          {
-            key: 'admin',
-            label: '平台管理',
-            description: '系统配置、用户管理等管理功能'
-          }
-        ],
-        rules: {
-          email: [
-            {
-              required: true,
-              message: '邮箱不能为空',
-              trigger: 'blur'
-            },
-            {
-              type: 'email',
-              message: '请输入正确的邮箱格式',
-              trigger: 'blur'
-            }
-          ],
-          name: [
-            {
-              required: true,
-              message: '姓名不能为空',
-              trigger: 'blur'
-            },
-            {
-              min: 2,
-              max: 20,
-              message: '姓名长度应在2-20个字符之间',
-              trigger: 'blur'
-            }
-          ],
-          role: [
-            {
-              required: true,
-              message: '请选择用户角色',
-              trigger: 'change'
-            }
-          ]
         }
       }
     },
@@ -160,9 +94,79 @@
         return this.roles.map(role => ({
           key: role.key || role.role_name,
           name: role.name || role.role_name,
-          description: role.description || '暂无描述',
+          description: role.description || this.$t('暂无描述'),
           permissions: role.permissions || []
         }))
+      },
+      availablePermissions() {
+        return [
+          {
+            key: 'home',
+            label: this.$t('首页'),
+            description: this.$t('访问系统首页和概览信息')
+          },
+          {
+            key: 'business',
+            label: this.$t('业务'),
+            description: this.$t('管理和查看业务拓扑、服务实例等')
+          },
+          {
+            key: 'resource',
+            label: this.$t('资源'),
+            description: this.$t('管理主机、云区域等资源信息')
+          },
+          {
+            key: 'model',
+            label: this.$t('模型'),
+            description: this.$t('管理配置模型、字段和关联关系')
+          },
+          {
+            key: 'operation',
+            label: this.$t('运营分析'),
+            description: this.$t('查看运营数据和分析报告')
+          },
+          {
+            key: 'admin',
+            label: this.$t('平台管理'),
+            description: this.$t('系统配置、用户管理等管理功能')
+          }
+        ]
+      },
+      rules() {
+        return {
+          email: [
+            {
+              required: true,
+              message: this.$t('邮箱不能为空'),
+              trigger: 'blur'
+            },
+            {
+              type: 'email',
+              message: this.$t('邮箱格式不正确'),
+              trigger: 'blur'
+            }
+          ],
+          name: [
+            {
+              required: true,
+              message: this.$t('用户名不能为空'),
+              trigger: 'blur'
+            },
+            {
+              min: 2,
+              max: 20,
+              message: this.$t('姓名长度应在2-20个字符之间'),
+              trigger: 'blur'
+            }
+          ],
+          role: [
+            {
+              required: true,
+              message: this.$t('请选择角色'),
+              trigger: 'change'
+            }
+          ]
+        }
       }
     },
     watch: {
@@ -212,7 +216,7 @@
               }
               resolve(submitData)
             } else {
-              reject(new Error('表单验证失败'))
+              reject(new Error(this.$t('表单验证失败')))
             }
           })
         })
@@ -222,7 +226,7 @@
         try {
           await this.getRoles()
         } catch (error) {
-          console.error('获取角色列表失败:', error)
+          console.error(this.$t('获取角色列表失败') + ':', error)
         }
       },
 

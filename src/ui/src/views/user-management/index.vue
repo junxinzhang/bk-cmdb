@@ -1,12 +1,12 @@
 <template>
   <div class="user-management">
     <div class="header">
-      <h2>用户管理</h2>
+      <h2>{{ $t('用户管理') }}</h2>
       <bk-button
         theme="primary"
         icon="plus"
         @click="handleCreateUser">
-        新增用户
+        {{ $t('新增用户') }}
       </bk-button>
     </div>
 
@@ -14,13 +14,13 @@
       <bk-tab
         :active.sync="activeTab"
         type="unborder-card">
-        <bk-tab-panel name="users" label="用户列表">
+        <bk-tab-panel name="users" :label="$t('用户列表')">
           <user-list
             ref="userList"
             @edit="handleEditUser"
             @delete="handleDeleteUser" />
         </bk-tab-panel>
-        <bk-tab-panel name="roles" label="角色管理">
+        <bk-tab-panel name="roles" :label="$t('角色管理')">
           <role-management />
         </bk-tab-panel>
       </bk-tab>
@@ -29,7 +29,7 @@
     <!-- 用户编辑弹窗 -->
     <bk-dialog
       v-model="showUserDialog"
-      :title="isEditMode ? '编辑用户' : '新增用户'"
+      :title="isEditMode ? $t('编辑用户') : $t('新增用户')"
       :width="600"
       :mask-close="false"
       @confirm="handleConfirmUser"
@@ -85,13 +85,13 @@
       async handleDeleteUser(user) {
         try {
           await this.$bkInfo({
-            title: '确认删除',
-            subTitle: `确定要删除用户 ${user.name} 吗？`,
+            title: this.$t('确认删除'),
+            subTitle: this.$t('确认删除该用户？').replace('该用户', user.name),
             confirmFn: async () => {
               await this.deleteUser(user._id || user.id || user.user_id)
               this.$bkMessage({
                 theme: 'success',
-                message: '删除成功'
+                message: this.$t('删除成功')
               })
               this.$refs.userList.fetchUsers()
             }
@@ -99,7 +99,7 @@
         } catch (error) {
           this.$bkMessage({
             theme: 'error',
-            message: error.message || '删除失败'
+            message: error.message || this.$t('操作失败')
           })
         }
       },
@@ -111,13 +111,13 @@
             await this.updateUser({ id: this.currentUser._id || this.currentUser.id || this.currentUser.user_id, ...formData })
             this.$bkMessage({
               theme: 'success',
-              message: '更新成功'
+              message: this.$t('保存成功')
             })
           } else {
             await this.createUser(formData)
             this.$bkMessage({
               theme: 'success',
-              message: '创建成功'
+              message: this.$t('保存成功')
             })
           }
           this.showUserDialog = false
@@ -125,7 +125,7 @@
         } catch (error) {
           this.$bkMessage({
             theme: 'error',
-            message: error.message || '操作失败'
+            message: error.message || this.$t('操作失败')
           })
         }
       },
