@@ -1,0 +1,17 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="adminsvc" type="GoApplicationRunConfiguration" factoryName="Go Application">
+    <module name="bk-cmdb" />
+    <working_directory value="$PROJECT_DIR$/src/scene_server/admin_server" />
+    <parameters value="--addrport=cmdb.domain.com:60004 --v=3 --config=configures/migrate.yaml --enable-auth=false" />
+    <envs>
+      <env name="CGO_CPPFLAGS" value="-I/opt/homebrew/include" />
+      <env name="CGO_LDFLAGS" value="-L/opt/homebrew/lib -lssl -lcrypto" />
+    </envs>
+    <kind value="DIRECTORY" />
+    <package value="configcenter" />
+    <directory value="$PROJECT_DIR$/src/scene_server/admin_server" />
+    <filePath value="$PROJECT_DIR$" />
+    <output_directory value="$PROJECT_DIR$/src/bin" />
+    <method v="2" />
+  </configuration>
+</component>

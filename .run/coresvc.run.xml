@@ -1,0 +1,17 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="coresvc" type="GoApplicationRunConfiguration" factoryName="Go Application">
+    <module name="bk-cmdb" />
+    <working_directory value="$PROJECT_DIR$/src/source_controller/coreservice" />
+    <parameters value="--addrport=cmdb.domain.com:50009 --logtostderr=true --log-dir=./logs --v=4 --regdiscv=cmdb.domain.com:2181" />
+    <envs>
+      <env name="CGO_CPPFLAGS" value="-I/opt/homebrew/include" />
+      <env name="CGO_LDFLAGS" value="-L/opt/homebrew/lib -lssl -lcrypto" />
+    </envs>
+    <kind value="DIRECTORY" />
+    <package value="configcenter/src/source_controller/coreservice" />
+    <directory value="$PROJECT_DIR$/src/source_controller/coreservice" />
+    <filePath value="$PROJECT_DIR$/src/|$PROJECT_DIR$/src/web_server/ui.go|$PROJECT_DIR$/src/source_controller/coreservice/main.go" />
+    <output_directory value="$PROJECT_DIR$/src/bin" />
+    <method v="2" />
+  </configuration>
+</component>

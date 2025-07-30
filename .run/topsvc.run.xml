@@ -1,0 +1,17 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="topsvc" type="GoApplicationRunConfiguration" factoryName="Go Application">
+    <module name="bk-cmdb" />
+    <working_directory value="$PROJECT_DIR$/src/scene_server/topo_server" />
+    <parameters value="--addrport=cmdb.domain.com:60002 --v=3 --regdiscv=cmdb.domain.com:2181 --register-ip=cmdb.domain.com --enable-auth=false" />
+    <envs>
+      <env name="CGO_CPPFLAGS" value="-I/opt/homebrew/include" />
+      <env name="CGO_LDFLAGS" value="-L/opt/homebrew/lib -lssl -lcrypto" />
+    </envs>
+    <kind value="DIRECTORY" />
+    <package value="configcenter" />
+    <directory value="$PROJECT_DIR$/src/scene_server/topo_server" />
+    <filePath value="$PROJECT_DIR$" />
+    <output_directory value="$PROJECT_DIR$/src/bin" />
+    <method v="2" />
+  </configuration>
+</component>
