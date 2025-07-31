@@ -140,7 +140,7 @@ func (m *modelAttribute) save(kit *rest.Kit, attribute metadata.Attribute) (id u
 			common.FieldTypeBool, common.FieldTypeList, common.FieldTypeIDRule:
 			isMultiple := false
 			attribute.IsMultiple = &isMultiple
-		case common.FieldTypeUser, common.FieldTypeOrganization, common.FieldTypeEnumQuote, common.FieldTypeEnumMulti:
+		case common.FieldTypeUser, common.FieldTypeOrganization, common.FieldTypeEnumQuote, common.FieldTypeEnumMulti, common.FieldTypeAttachment:
 			isMultiple := true
 			attribute.IsMultiple = &isMultiple
 		default:
@@ -498,6 +498,7 @@ var validAttrPropertyTypes = map[string]struct{}{
 	common.FieldTypeList:         {},
 	common.FieldTypeEnumQuote:    {},
 	common.FieldTypeIDRule:       {},
+	common.FieldTypeAttachment:   {},
 }
 
 func (m *modelAttribute) checkAttributeValidity(kit *rest.Kit, attribute metadata.Attribute,

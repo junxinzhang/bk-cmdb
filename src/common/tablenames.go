@@ -123,6 +123,9 @@ const (
 
 	// BKTableNameObjFieldTemplateRelation  object and field template relationship table
 	BKTableNameObjFieldTemplateRelation = "cc_ObjFieldTemplateRelation"
+
+	// BKTableNameAttachmentMeta the table name of the attachment metadata
+	BKTableNameAttachmentMeta = "cc_AttachmentMeta"
 )
 
 // AllTables is all table names, not include the sharding tables which is created dynamically,
@@ -176,6 +179,7 @@ var AllTables = []string{
 	BKTableNameCloudSyncTask,
 	BKTableNameCloudAccount,
 	BKTableNameCloudSyncHistory,
+	BKTableNameAttachmentMeta,
 }
 
 // TableSpecifier is table specifier type which describes the metadata

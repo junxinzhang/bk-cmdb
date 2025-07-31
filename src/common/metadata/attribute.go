@@ -188,6 +188,7 @@ func (attribute *Attribute) Validate(ctx context.Context, data interface{}, key 
 		common.FieldTypeOrganization: attribute.validOrganization,
 		common.FieldTypeInnerTable:   attribute.validInnerTable,
 		common.FieldTypeIDRule:       attribute.validIDRule,
+		common.FieldTypeAttachment:   attribute.validAttachment,
 	}
 
 	rawError := errors.RawErrorInfo{}
@@ -1899,4 +1900,228 @@ func ValidTableFieldBaseType(fieldType string) bool {
 	default:
 		return false
 	}
+}
+
+// validAttachment valid object Attribute that is attachment type
+func (attribute *Attribute) validAttachment(ctx context.Context, val interface{}, key string) errors.RawErrorInfo {
+	rid := util.ExtractRequestIDFromContext(ctx)
+	
+	// If value is nil or empty, check if required
+	if val == nil {
+		if attribute.IsRequired {
+			blog.Errorf("attachment field is required but got null, rid: %s", rid)
+			return errors.RawErrorInfo{
+				ErrCode: common.CCErrCommParamsNeedSet,
+				Args:    []interface{}{key},
+			}
+		}
+		return errors.RawErrorInfo{}
+	}
+
+	// Try to parse as AttachmentValue
+	var attachmentValue AttachmentValue
+	switch v := val.(type) {
+	case AttachmentValue:
+		attachmentValue = v
+	case map[string]interface{}:
+		if fileIDs, ok := v["file_ids"]; ok {
+			if fileIDsSlice, ok := fileIDs.([]interface{}); ok {
+				attachmentValue.FileIDs = make([]string, len(fileIDsSlice))
+				for i, id := range fileIDsSlice {
+					if idStr, ok := id.(string); ok {
+						attachmentValue.FileIDs[i] = idStr
+					} else {
+						blog.Errorf("invalid file id type in attachment value, rid: %s", rid)
+						return errors.RawErrorInfo{
+							ErrCode: common.CCErrCommParamsInvalid,
+							Args:    []interface{}{key},
+						}
+					}
+				}
+			} else if fileIDsStrSlice, ok := fileIDs.([]string); ok {
+				attachmentValue.FileIDs = fileIDsStrSlice
+			} else {
+				blog.Errorf("invalid file_ids type in attachment value, rid: %s", rid)
+				return errors.RawErrorInfo{
+					ErrCode: common.CCErrCommParamsInvalid,
+					Args:    []interface{}{key},
+				}
+			}
+		}
+	case string:
+		// Try to parse JSON string
+		if err := json.Unmarshal([]byte(v), &attachmentValue); err != nil {
+			blog.Errorf("failed to parse attachment value from string, err: %v, rid: %s", err, rid)
+			return errors.RawErrorInfo{
+				ErrCode: common.CCErrCommParamsInvalid,
+				Args:    []interface{}{key},
+			}
+		}
+	default:
+		blog.Errorf("unsupported attachment value type: %T, rid: %s", val, rid)
+		return errors.RawErrorInfo{
+			ErrCode: common.CCErrCommParamsInvalid,
+			Args:    []interface{}{key},
+		}
+	}
+
+	// Get attachment field configuration
+	attachmentOption, err := attribute.getAttachmentOption()
+	if err != nil {
+		blog.Errorf("failed to get attachment option, err: %v, rid: %s", err, rid)
+		return errors.RawErrorInfo{
+			ErrCode: common.CCErrCommParamsInvalid,
+			Args:    []interface{}{key},
+		}
+	}
+
+	// Validate file count
+	if len(attachmentValue.FileIDs) > attachmentOption.MaxFileCount {
+		blog.Errorf("attachment file count %d exceeds limit %d, rid: %s", 
+			len(attachmentValue.FileIDs), attachmentOption.MaxFileCount, rid)
+		return errors.RawErrorInfo{
+			ErrCode: common.CCErrCommOverLimit,
+			Args:    []interface{}{key, attachmentOption.MaxFileCount},
+		}
+	}
+
+	// Validate file IDs format (basic validation)
+	for _, fileID := range attachmentValue.FileIDs {
+		if fileID == "" {
+			blog.Errorf("empty file id in attachment value, rid: %s", rid)
+			return errors.RawErrorInfo{
+				ErrCode: common.CCErrCommParamsInvalid,
+				Args:    []interface{}{key},
+			}
+		}
+	}
+
+	return errors.RawErrorInfo{}
+}
+
+// getAttachmentOption parse attachment field option from attribute.Option
+func (attribute *Attribute) getAttachmentOption() (*common.AttachmentOption, error) {
+	if attribute.Option == nil {
+		// Return default option if not specified
+		return &common.AttachmentOption{
+			MaxFileSize:  100 * 1024 * 1024, // 100MB
+			MaxFileCount: 10,
+			AllowedTypes: []string{"image/*", "application/pdf", "text/*", "application/zip"},
+			AllowPreview: true,
+			StoragePath:  "/data/attachments",
+		}, nil
+	}
+
+	optionBytes, err := json.Marshal(attribute.Option)
+	if err != nil {
+		return nil, err
+	}
+
+	var option common.AttachmentOption
+	err = json.Unmarshal(optionBytes, &option)
+	if err != nil {
+		return nil, err
+	}
+
+	// Set default values if not specified
+	if option.MaxFileSize == 0 {
+		option.MaxFileSize = 100 * 1024 * 1024 // 100MB
+	}
+	if option.MaxFileCount == 0 {
+		option.MaxFileCount = 10
+	}
+	if len(option.AllowedTypes) == 0 {
+		option.AllowedTypes = []string{"image/*", "application/pdf", "text/*", "application/zip"}
+	}
+	if option.StoragePath == "" {
+		option.StoragePath = "/data/attachments"
+	}
+
+	return &option, nil
+}
+
+// ParseAttachmentOption parse attachment data in option
+func ParseAttachmentOption(val interface{}) (common.AttachmentOption, error) {
+	if val == nil || val == "" {
+		return common.AttachmentOption{
+			MaxFileSize:  10,                                                            // 10MB default
+			MaxFileCount: 5,                                                             // 5 files default
+			AllowedTypes: []string{"image", "document"},                                 // image and document default
+			AllowPreview: true,
+			StoragePath:  "",
+		}, nil
+	}
+
+	var optMap map[string]interface{}
+
+	switch option := val.(type) {
+	case common.AttachmentOption:
+		return option, nil
+	case string:
+		var attachOption common.AttachmentOption
+		err := json.Unmarshal([]byte(option), &attachOption)
+		if err != nil {
+			return common.AttachmentOption{}, fmt.Errorf("parse attachment option string failed: %v", err)
+		}
+		return attachOption, nil
+	case map[string]interface{}:
+		optMap = option
+	case bson.M:
+		optMap = option
+	case bson.D:
+		optMap = option.Map()
+	default:
+		return common.AttachmentOption{}, fmt.Errorf("unknown val type: %T for attachment option", val)
+	}
+
+	// Parse from map
+	attachOption := common.AttachmentOption{
+		MaxFileSize:  10,                            // 10MB default
+		MaxFileCount: 5,                             // 5 files default
+		AllowedTypes: []string{"image", "document"}, // image and document default
+		AllowPreview: true,
+		StoragePath:  "",
+	}
+
+	if maxFileSize, ok := optMap["maxFileSize"]; ok {
+		if size, err := util.GetIntByInterface(maxFileSize); err == nil {
+			attachOption.MaxFileSize = int64(size)
+		}
+	}
+
+	if maxFileCount, ok := optMap["maxFileCount"]; ok {
+		if count, err := util.GetIntByInterface(maxFileCount); err == nil {
+			attachOption.MaxFileCount = count
+		}
+	}
+
+	if allowedTypes, ok := optMap["allowedTypes"]; ok {
+		if types, ok := allowedTypes.([]interface{}); ok {
+			strTypes := make([]string, 0, len(types))
+			for _, t := range types {
+				if str, ok := t.(string); ok {
+					strTypes = append(strTypes, str)
+				}
+			}
+			if len(strTypes) > 0 {
+				attachOption.AllowedTypes = strTypes
+			}
+		} else if types, ok := allowedTypes.([]string); ok {
+			attachOption.AllowedTypes = types
+		}
+	}
+
+	if allowPreview, ok := optMap["allowPreview"]; ok {
+		if preview, ok := allowPreview.(bool); ok {
+			attachOption.AllowPreview = preview
+		}
+	}
+
+	if storagePath, ok := optMap["storagePath"]; ok {
+		if path, ok := storagePath.(string); ok {
+			attachOption.StoragePath = path
+		}
+	}
+
+	return attachOption, nil
 }

@@ -945,6 +945,28 @@ const (
 	CCErrDeleteDestroyedHostRelatedFailed     = 1118022
 	CCErrCloudAccountDeletedFailedForSyncTask = 1118023
 
+	// attachment_server 1199200-1199299
+	// CCErrAttachmentFileNotFound attachment file not found
+	CCErrAttachmentFileNotFound = 1199200
+	// CCErrAttachmentFileSizeExceeded attachment file size exceeded
+	CCErrAttachmentFileSizeExceeded = 1199201
+	// CCErrAttachmentFileTypeNotSupported attachment file type not supported
+	CCErrAttachmentFileTypeNotSupported = 1199202
+	// CCErrAttachmentFileCountExceeded attachment file count exceeded
+	CCErrAttachmentFileCountExceeded = 1199203
+	// CCErrAttachmentUploadFailed attachment upload failed
+	CCErrAttachmentUploadFailed = 1199204
+	// CCErrAttachmentStorageError attachment storage error
+	CCErrAttachmentStorageError = 1199205
+	// CCErrAttachmentPermissionDenied attachment permission denied
+	CCErrAttachmentPermissionDenied = 1199206
+	// CCErrAttachmentPreviewNotSupported attachment preview not supported
+	CCErrAttachmentPreviewNotSupported = 1199207
+	// CCErrAttachmentVirusDetected attachment virus detected
+	CCErrAttachmentVirusDetected = 1199208
+	// CCErrAttachmentCorrupted attachment file corrupted
+	CCErrAttachmentCorrupted = 1199209
+
 	/** TODO: 以下错误码需要改造 **/
 
 	// json

@@ -219,6 +219,7 @@
   import theFieldBool from './bool'
   import theFieldEnumquote from './enumquote.vue'
   import theFieldInnertable from './inner-table/index.vue'
+  import theFieldAttachment from './attachment.vue'
   import theConfig from './config'
   import { mapGetters, mapActions } from 'vuex'
   import { MENU_BUSINESS } from '@/dictionary/menu-symbol'
@@ -238,7 +239,8 @@
       theFieldList,
       theFieldBool,
       theConfig,
-      theFieldInnertable
+      theFieldInnertable,
+      theFieldAttachment
     },
     props: {
       properties: {

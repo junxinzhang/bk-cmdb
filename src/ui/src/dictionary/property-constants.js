@@ -34,7 +34,8 @@ export const PROPERTY_TYPES = Object.freeze({
   SERVICE_TEMPLATE: 'service-template',
   TOPOLOGY: 'topology',
   FOREIGNKEY: 'foreignkey',
-  INNER_TABLE: 'innertable'
+  INNER_TABLE: 'innertable',
+  ATTACHMENT: 'attachment'
 })
 
 export const PROPERTY_TYPE_NAMES = Object.freeze({
@@ -53,7 +54,8 @@ export const PROPERTY_TYPE_NAMES = Object.freeze({
   [PROPERTY_TYPES.ENUMMULTI]: t('枚举(多选)'),
   [PROPERTY_TYPES.INNER_TABLE]: t('表格'),
   [PROPERTY_TYPES.ENUMQUOTE]: t('枚举(引用)'),
-  [PROPERTY_TYPES.FOREIGNKEY]: t('系统内置类型')
+  [PROPERTY_TYPES.FOREIGNKEY]: t('系统内置类型'),
+  [PROPERTY_TYPES.ATTACHMENT]: t('附件')
 })
 
 export const PROPERTY_TYPE_LIST = [
@@ -120,6 +122,10 @@ export const PROPERTY_TYPE_LIST = [
   {
     id: PROPERTY_TYPES.FOREIGNKEY,
     name: PROPERTY_TYPE_NAMES[PROPERTY_TYPES.FOREIGNKEY]
+  },
+  {
+    id: PROPERTY_TYPES.ATTACHMENT,
+    name: PROPERTY_TYPE_NAMES[PROPERTY_TYPES.ATTACHMENT]
   }
 ]
 
@@ -138,7 +144,8 @@ export const EDITABLE_TYPES = [
   PROPERTY_TYPES.ORGANIZATION,
   PROPERTY_TYPES.ENUMMULTI,
   PROPERTY_TYPES.ENUMQUOTE,
-  PROPERTY_TYPES.INNER_TABLE
+  PROPERTY_TYPES.INNER_TABLE,
+  PROPERTY_TYPES.ATTACHMENT
 ]
 
 export const REQUIRED_TYPES = [

@@ -471,6 +471,8 @@ func (a *attribute) isCreateDataValid(kit *rest.Kit, data *metadata.Attribute) e
 		switch data.PropertyType {
 		case common.FieldTypeEnum, common.FieldTypeEnumMulti:
 			extraOpt = data.IsMultiple
+		case common.FieldTypeAttachment:
+			extraOpt = data.Default
 		default:
 			extraOpt = data.Default
 		}
@@ -506,6 +508,8 @@ func (a *attribute) isPropertyTypeIntEnumListSingleLong(propertyType string) boo
 	case common.FieldTypeInt, common.FieldTypeEnum, common.FieldTypeList, common.FieldTypeEnumMulti:
 		return true
 	case common.FieldTypeSingleChar, common.FieldTypeLongChar:
+		return true
+	case common.FieldTypeAttachment:
 		return true
 	default:
 		return false

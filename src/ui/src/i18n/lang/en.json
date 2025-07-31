@@ -1712,6 +1712,7 @@
     "枚举(多选)": "Enumeration(multiple)",
     "枚举(引用)": "Enumeration(quote)",
     "表格": "Table",
+    "附件": "Attachment",
     "不勾选“可编辑”，则创建实例时，初始化该字段值后不可再编辑":"If 'Editable' is not checked, the field value cannot be edited after initialization when creating an instance",
     "请选择模型实例":"Please select a model instance",
     "该字段暂无权限配置，点击申请权限":"This field does not have permission configuration",
@@ -1991,5 +1992,13 @@
     "用户已启用": "User enabled",
     "操作员": "Operator",
     "未知": "Unknown",
-    "已锁定": "Locked"
+    "已锁定": "Locked",
+    "文件大小限制": "File Size Limit",
+    "最大文件数量": "Maximum File Count",
+    "允许的文件类型": "Allowed File Types",
+    "存储路径": "Storage Path",
+    "图片": "Images",
+    "文档": "Documents",
+    "压缩包": "Archives",
+    "留空使用默认路径 /data/attachments/": "Leave blank to use default path /data/attachments/"
 }

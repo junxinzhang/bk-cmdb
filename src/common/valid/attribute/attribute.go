@@ -57,6 +57,8 @@ func ValidPropertyOption(kit *rest.Kit, propertyType string, option interface{},
 			return kit.CCError.Errorf(common.CCErrCommParamsIsInvalid, "option")
 		}
 		return ValidIDRuleOption(kit, option, attrTypeMap)
+	case common.FieldTypeAttachment:
+		return ValidFieldTypeAttachment(kit, option, extraOpt)
 	}
 
 	return nil
@@ -363,6 +365,53 @@ func ValidIDRuleOption(kit *rest.Kit, val interface{}, attrTypeMap map[string]st
 				blog.Errorf("attr val %s type %s is invalid, rid: %s", rule.Val, attrType, kit.Rid)
 				return kit.CCError.Errorf(common.CCErrCommParamsIsInvalid, "option")
 			}
+		}
+	}
+
+	return nil
+}
+
+// ValidFieldTypeAttachment validate attachment field type's option
+func ValidFieldTypeAttachment(kit *rest.Kit, option, defaultVal interface{}) error {
+	if option == nil {
+		return nil
+	}
+
+	// Parse attachment option
+	attachmentOption, err := metadata.ParseAttachmentOption(option)
+	if err != nil {
+		blog.Errorf("parse attachment option %+v failed, err: %v, rid: %s", option, err, kit.Rid)
+		return kit.CCError.Errorf(common.CCErrCommParamsIsInvalid, "option")
+	}
+
+	// Validate file size limit (1MB - 100MB)
+	if attachmentOption.MaxFileSize < 1 || attachmentOption.MaxFileSize > 100 {
+		blog.Errorf("attachment max file size %d is invalid, should be 1-100MB, rid: %s", attachmentOption.MaxFileSize, kit.Rid)
+		return kit.CCError.Errorf(common.CCErrCommParamsIsInvalid, "maxFileSize")
+	}
+
+	// Validate file count limit (1-20)
+	if attachmentOption.MaxFileCount < 1 || attachmentOption.MaxFileCount > 20 {
+		blog.Errorf("attachment max file count %d is invalid, should be 1-20, rid: %s", attachmentOption.MaxFileCount, kit.Rid)
+		return kit.CCError.Errorf(common.CCErrCommParamsIsInvalid, "maxFileCount")
+	}
+
+	// Validate allowed types
+	validTypes := map[string]bool{
+		"image":    true,
+		"document": true,
+		"archive":  true,
+	}
+	
+	if len(attachmentOption.AllowedTypes) == 0 {
+		blog.Errorf("attachment allowed types cannot be empty, rid: %s", kit.Rid)
+		return kit.CCError.Errorf(common.CCErrCommParamsIsInvalid, "allowedTypes")
+	}
+
+	for _, fileType := range attachmentOption.AllowedTypes {
+		if !validTypes[fileType] {
+			blog.Errorf("attachment allowed type %s is invalid, rid: %s", fileType, kit.Rid)
+			return kit.CCError.Errorf(common.CCErrCommParamsIsInvalid, "allowedTypes")
 		}
 	}
 

@@ -990,7 +990,7 @@ const (
 
 var FieldTypes = []string{FieldTypeSingleChar, FieldTypeLongChar, FieldTypeInt, FieldTypeFloat, FieldTypeEnum,
 	FieldTypeEnumMulti, FieldTypeDate, FieldTypeTime, FieldTypeUser, FieldTypeOrganization, FieldTypeTimeZone,
-	FieldTypeBool, FieldTypeList, FieldTypeTable, FieldTypeInnerTable, FieldTypeEnumQuote}
+	FieldTypeBool, FieldTypeList, FieldTypeTable, FieldTypeInnerTable, FieldTypeEnumQuote, FieldTypeAttachment}
 
 const (
 	// FieldTypeSingleChar the single char filed type
@@ -1049,6 +1049,9 @@ const (
 
 	// FieldTypeIDRule the id rule field type
 	FieldTypeIDRule string = "id_rule"
+
+	// FieldTypeAttachment the attachment field type
+	FieldTypeAttachment string = "attachment"
 
 	// FieldTypeSingleLenChar the single char length limit
 	FieldTypeSingleLenChar int = 256
@@ -1197,6 +1200,15 @@ const (
 
 // KvMap the map definition
 type KvMap map[string]interface{}
+
+// AttachmentOption 附件字段配置选项
+type AttachmentOption struct {
+	MaxFileSize    int64    `json:"max_file_size"`    // 最大文件大小(字节)
+	AllowedTypes   []string `json:"allowed_types"`    // 允许的文件类型
+	MaxFileCount   int      `json:"max_file_count"`   // 最大文件数量
+	AllowPreview   bool     `json:"allow_preview"`    // 是否允许预览
+	StoragePath    string   `json:"storage_path"`     // 存储路径
+}
 
 const (
 	// CCSystemOperatorUserName the system user
